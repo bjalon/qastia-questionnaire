@@ -9,7 +9,10 @@ import {
   type FormSource,
 } from "../src";
 import { rangeForPath } from "../src/compiler";
-import { __designerMutationTestApi } from "../src/designer/sourceMutations";
+import {
+  addQuestionSource,
+  updateElementSource,
+} from "../src/designer/sourceMutations";
 
 const validSource: FormSource = {
   content: `version: 1
@@ -168,7 +171,7 @@ describe("storage adapters", () => {
 
 describe("designer mutations", () => {
   it("adds a question through structured YAML parsing", () => {
-    const result = __designerMutationTestApi.addQuestionSource(
+    const result = addQuestionSource(
       validSource,
       defaultFormRuntime,
       { kind: "page", pageId: "page_1" },
@@ -185,7 +188,7 @@ describe("designer mutations", () => {
   });
 
   it("updates inspector fields in YAML", () => {
-    const nextSource = __designerMutationTestApi.updateElementSource(validSource, "page_1", "name", {
+    const nextSource = updateElementSource(validSource, "page_1", "name", {
       title: "Nom complet",
       required: false,
     });

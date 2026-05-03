@@ -3,9 +3,23 @@ import {
   FORM_RUNTIME_PUBLIC_API_VERSION,
   compileForm,
   defaultFormRuntime,
-} from "../dist/form-runtime.js";
-import { rangeForPath } from "../dist/compiler.js";
-import { LocalStorageFormDesignerPersistenceAdapter } from "../dist/storage.js";
+} from "@bjalon/form-runtime";
+import { rangeForPath } from "@bjalon/form-runtime/compiler";
+import { FormDesigner } from "@bjalon/form-runtime/designer";
+import { FormPreview } from "@bjalon/form-runtime/preview";
+import { FormRunner } from "@bjalon/form-runtime/runner";
+import { createFormRuntime } from "@bjalon/form-runtime/runtime";
+import { LocalStorageFormDesignerPersistenceAdapter } from "@bjalon/form-runtime/storage";
+
+assert.equal(typeof FormDesigner, "function");
+assert.equal(typeof FormPreview, "function");
+assert.equal(typeof FormRunner, "function");
+assert.equal(typeof createFormRuntime, "function");
+
+await assert.rejects(
+  () => import("@bjalon/form-runtime/designer/sourceMutations"),
+  (error) => error?.code === "ERR_PACKAGE_PATH_NOT_EXPORTED",
+);
 
 const source = {
   content: `version: 1

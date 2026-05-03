@@ -23,5 +23,6 @@
     "vite.config.ts",
     "vite.example.config.ts",
     "vitest.config.ts"
-  ]
+  ],
+  "exclude": ["tests/vite-consumer-smoke"]
 }

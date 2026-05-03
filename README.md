@@ -296,6 +296,48 @@ L'application hote peut fournir ses propres boutons dans la topbar du designer :
 
 Ces actions restent applicatives. La librairie ne decide pas comment sauvegarder, publier ou persister le formulaire.
 
+### Props Publiques
+
+Props principales de `FormDesigner` :
+
+```ts
+type FormDesignerProps = {
+  source?: FormSource;
+  defaultSource?: FormSource;
+  runtime?: FormRuntime;
+  actions?: React.ReactNode;
+  storage?: false | FormDesignerPersistenceAdapter;
+  storageKey?: string;
+  selection?: FormDesignerSelection;
+  defaultSelection?: FormDesignerSelection;
+  options?: Partial<FormDesignerOptions>;
+  onSourceChange?: (event: FormSourceChangeEvent) => void;
+  onSelectionChange?: (selection: FormDesignerSelection) => void;
+  onCompile?: (result: CompileFormResult) => void;
+};
+```
+
+Options publiques :
+
+```ts
+type FormDesignerOptions = {
+  showDiagnostics: boolean;
+  defaultViewMode: "form" | "yaml" | "preview";
+  viewModes: readonly ("form" | "yaml" | "preview")[];
+};
+```
+
+La selection peut etre controlee par l'application :
+
+```tsx
+<FormDesigner
+  source={source}
+  selection={selection}
+  onSelectionChange={setSelection}
+  onSourceChange={(event) => setSource(event.source)}
+/>
+```
+
 ### Stockage Decouple
 
 Le stockage du designer passe par un adapter independant de React. L'application peut donc brancher `localStorage`, une API REST, Firebase ou tout autre backend sans que la librairie connaisse ce stockage.
@@ -352,6 +394,32 @@ Le runner supporte :
 - validation par type de question ;
 - focus sur la premiere erreur ;
 - soumission uniquement si la validation passe.
+
+Props principales de `FormRunner` :
+
+```ts
+type FormRunnerProps = {
+  form: CompiledForm;
+  runtime?: FormRuntime;
+  answers?: FormAnswers;
+  defaultAnswers?: FormAnswers;
+  viewMode?: "participant" | "preview";
+  onAnswersChange?: (answers: FormAnswers) => void;
+  onSubmit?: (event: FormSubmitEvent) => void;
+};
+```
+
+Props principales de `FormPreview` :
+
+```ts
+type FormPreviewProps = {
+  result: CompileFormResult;
+  runtime?: FormRuntime;
+  showDiagnostics?: boolean;
+  showHeader?: boolean;
+  showHeaderTitle?: boolean;
+};
+```
 
 ## Payload De Reponses
 
@@ -499,9 +567,12 @@ Commandes utiles :
 ```bash
 npm run typecheck
 npm test
+npm run test:package
 npm run build:example
 npm pack --dry-run
 ```
+
+`npm run test:package` reconstruit la librairie, teste les entrypoints publics `@bjalon/form-runtime/*`, verifie qu'un deep import interne est refuse, puis compile une mini app Vite consommateur basee sur `runner`, `compiler` et `runtime`.
 
 ## Publication GitHub Packages
 

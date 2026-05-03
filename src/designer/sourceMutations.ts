@@ -158,16 +158,6 @@ export function parseOptionsText(value: string): readonly QuestionOption[] {
     });
 }
 
-export const __designerMutationTestApi = {
-  addPageSource,
-  addQuestionSource,
-  formatOptionsText,
-  parseOptionsText,
-  updateElementSource,
-  updateFormMetadataSource,
-  updatePageSource,
-};
-
 export function formatOptionsText(options: readonly QuestionOption[]): string {
   return options.map((option) => `${option.value} | ${option.label}`).join("\n");
 }

@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.vite-consumer-smoke.tsbuildinfo"
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": []
+}

@@ -27,6 +27,8 @@ export type FormSourceChangeEvent = {
 
 export type FormDesignerOptions = {
   readonly showDiagnostics: boolean;
+  readonly defaultViewMode: FormDesignerViewMode;
+  readonly viewModes: readonly FormDesignerViewMode[];
 };
 
 export type FormDesignerProps = {
@@ -36,7 +38,10 @@ export type FormDesignerProps = {
   readonly actions?: React.ReactNode;
   readonly storage?: false | FormDesignerPersistenceAdapter;
   readonly storageKey?: string;
+  readonly selection?: FormDesignerSelection;
+  readonly defaultSelection?: FormDesignerSelection;
   readonly options?: Partial<FormDesignerOptions>;
   readonly onSourceChange?: (event: FormSourceChangeEvent) => void;
+  readonly onSelectionChange?: (selection: FormDesignerSelection) => void;
   readonly onCompile?: (result: CompileFormResult) => void;
 };

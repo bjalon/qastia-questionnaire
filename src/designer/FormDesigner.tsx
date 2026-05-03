@@ -51,20 +51,24 @@ export function FormDesigner({
   actions,
   storage = false,
   storageKey,
+  selection,
+  defaultSelection = { kind: "form" },
   options,
   onSourceChange,
+  onSelectionChange,
   onCompile,
 }: FormDesignerProps): React.ReactElement {
   const [internalSource, setInternalSource] = useState<FormSource>(defaultSource);
-  const [viewMode, setViewMode] = useState<FormDesignerViewMode>("form");
-  const [selection, setSelection] = useState<FormDesignerSelection>({ kind: "form" });
+  const resolvedOptions = { ...defaultDesignerOptions, ...options };
+  const [viewMode, setViewMode] = useState<FormDesignerViewMode>(resolvedOptions.defaultViewMode);
+  const [internalSelection, setInternalSelection] = useState<FormDesignerSelection>(defaultSelection);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [openModeMenu, setOpenModeMenu] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(source !== undefined || storage === false);
   const [recoveredAt, setRecoveredAt] = useState<string | null>(null);
-  const resolvedOptions = { ...defaultDesignerOptions, ...options };
   const currentSource = source ?? internalSource;
+  const currentSelection = selection ?? internalSelection;
   const compileResult = useMemo(
     () => compileForm(currentSource, runtime, { mode: "authoring" }),
     [currentSource, runtime],
@@ -74,6 +78,12 @@ export function FormDesigner({
   useEffect(() => {
     onCompile?.(compileResult);
   }, [compileResult, onCompile]);
+
+  useEffect(() => {
+    if (!resolvedOptions.viewModes.includes(viewMode)) {
+      setViewMode(resolvedOptions.viewModes[0] ?? "form");
+    }
+  }, [resolvedOptions.viewModes, viewMode]);
 
   useEffect(() => {
     if (source || !storage || storageLoaded) {
@@ -118,19 +128,26 @@ export function FormDesigner({
     onSourceChange?.({ source: nextSource, reason });
   }
 
+  function updateSelection(nextSelection: FormDesignerSelection): void {
+    if (!selection) {
+      setInternalSelection(nextSelection);
+    }
+    onSelectionChange?.(nextSelection);
+  }
+
   function restoreVersion(nextSource: FormSource): void {
     applySource(nextSource, "version-restore");
   }
 
   function addQuestion(questionTypeId: string): void {
-    const result = addQuestionSource(currentSource, runtime, selection, questionTypeId);
-    setSelection({ kind: "element", pageId: result.pageId, elementId: result.elementId });
+    const result = addQuestionSource(currentSource, runtime, currentSelection, questionTypeId);
+    updateSelection({ kind: "element", pageId: result.pageId, elementId: result.elementId });
     applySource(result.source, "palette-add-question");
   }
 
   function addPage(): void {
-    const result = addPageSource(currentSource, selection);
-    setSelection({ kind: "page", pageId: result.pageId });
+    const result = addPageSource(currentSource, currentSelection);
+    updateSelection({ kind: "page", pageId: result.pageId });
     applySource(result.source, "palette-add-page");
   }
 
@@ -190,7 +207,7 @@ export function FormDesigner({
             </button>
             {openModeMenu ? (
               <div className="qf-workspace-menu" role="menu">
-                {(["form", "yaml", "preview"] as const).map((mode) => (
+                {resolvedOptions.viewModes.map((mode) => (
                   <button
                     key={mode}
                     type="button"
@@ -257,14 +274,14 @@ export function FormDesigner({
           <DesignerCanvas
             form={form}
             diagnostics={compileResult.diagnostics}
-            selection={selection}
-            onSelectionChange={setSelection}
+            selection={currentSelection}
+            onSelectionChange={updateSelection}
           />
           <aside className="qf-designer-sidebar">
             <QuestionPalette runtime={runtime} onAddQuestion={addQuestion} onAddPage={addPage} />
             <FormInspector
               form={form}
-              selection={selection}
+              selection={currentSelection}
               onUpdateForm={(patch) =>
                 applySource(updateFormMetadataSource(currentSource, patch), "inspector-edit")
               }
