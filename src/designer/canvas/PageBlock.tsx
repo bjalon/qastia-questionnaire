@@ -3,7 +3,7 @@ import type {
   CompiledFormPage,
   FormDiagnostic,
 } from "../../publicTypes";
-import type { FormDesignerSelection } from "../types";
+import type { FormDesignerCanvasEditMode, FormDesignerSelection } from "../types";
 import { ElementBlock } from "./ElementBlock";
 
 export type PageBlockProps = {
@@ -12,7 +12,13 @@ export type PageBlockProps = {
   readonly pageCount: number;
   readonly diagnostics: readonly FormDiagnostic[];
   readonly selection: FormDesignerSelection;
+  readonly editMode: FormDesignerCanvasEditMode;
   readonly onSelectionChange: (selection: FormDesignerSelection) => void;
+  readonly onUpdateElement: (
+    pageId: string,
+    elementId: string,
+    patch: { readonly title?: string; readonly description?: string; readonly required?: boolean },
+  ) => void;
   readonly onDuplicatePage: (pageId: string) => void;
   readonly onDeletePage: (pageId: string) => void;
   readonly onMovePage: (pageId: string, direction: -1 | 1) => void;
@@ -27,7 +33,9 @@ export function PageBlock({
   pageCount,
   diagnostics,
   selection,
+  editMode,
   onSelectionChange,
+  onUpdateElement,
   onDuplicatePage,
   onDeletePage,
   onMovePage,
@@ -81,7 +89,9 @@ export function PageBlock({
               elementCount={page.elements.length}
               diagnostics={diagnostics}
               selected={selection.kind === "element" && selection.elementId === element.id}
+              editMode={editMode}
               onSelectionChange={onSelectionChange}
+              onUpdateElement={onUpdateElement}
               onDuplicateElement={onDuplicateElement}
               onDeleteElement={onDeleteElement}
               onMoveElement={onMoveElement}

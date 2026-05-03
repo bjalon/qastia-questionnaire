@@ -340,7 +340,11 @@ export function FormDesigner({
             form={form}
             diagnostics={compileResult.diagnostics}
             selection={currentSelection}
+            editMode={resolvedOptions.canvasEditMode}
             onSelectionChange={updateSelection}
+            onUpdateElement={(pageId, elementId, patch) =>
+              applySource(updateElementSource(currentSource, pageId, elementId, patch), "inspector-edit")
+            }
             onDuplicatePage={duplicatePage}
             onDeletePage={deletePage}
             onMovePage={movePage}
@@ -349,7 +353,6 @@ export function FormDesigner({
             onMoveElement={moveElement}
           />
           <aside className="qf-designer-sidebar">
-            <QuestionPalette runtime={runtime} onAddQuestion={addQuestion} onAddPage={addPage} />
             <FormInspector
               form={form}
               selection={currentSelection}
@@ -366,6 +369,7 @@ export function FormDesigner({
                 applySource(updateElementSource(currentSource, pageId, elementId, patch), "inspector-edit")
               }
             />
+            <QuestionPalette runtime={runtime} onAddQuestion={addQuestion} onAddPage={addPage} />
             {storage ? (
               <VersionHistoryPanel
                 storage={storage}

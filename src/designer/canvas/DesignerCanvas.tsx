@@ -1,13 +1,19 @@
 import type React from "react";
 import type { CompiledForm, FormDiagnostic } from "../../publicTypes";
-import type { FormDesignerSelection } from "../types";
+import type { FormDesignerCanvasEditMode, FormDesignerSelection } from "../types";
 import { PageBlock } from "./PageBlock";
 
 export type DesignerCanvasProps = {
   readonly form: CompiledForm | null;
   readonly diagnostics: readonly FormDiagnostic[];
   readonly selection: FormDesignerSelection;
+  readonly editMode: FormDesignerCanvasEditMode;
   readonly onSelectionChange: (selection: FormDesignerSelection) => void;
+  readonly onUpdateElement: (
+    pageId: string,
+    elementId: string,
+    patch: { readonly title?: string; readonly description?: string; readonly required?: boolean },
+  ) => void;
   readonly onDuplicatePage: (pageId: string) => void;
   readonly onDeletePage: (pageId: string) => void;
   readonly onMovePage: (pageId: string, direction: -1 | 1) => void;
@@ -20,7 +26,9 @@ export function DesignerCanvas({
   form,
   diagnostics,
   selection,
+  editMode,
   onSelectionChange,
+  onUpdateElement,
   onDuplicatePage,
   onDeletePage,
   onMovePage,
@@ -57,7 +65,9 @@ export function DesignerCanvas({
             pageCount={form.pages.length}
             diagnostics={diagnostics}
             selection={selection}
+            editMode={editMode}
             onSelectionChange={onSelectionChange}
+            onUpdateElement={onUpdateElement}
             onDuplicatePage={onDuplicatePage}
             onDeletePage={onDeletePage}
             onMovePage={onMovePage}

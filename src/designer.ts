@@ -13,6 +13,7 @@ export type { VersionHistoryPanelProps } from "./designer/versions/VersionHistor
 export type {
   FormDesignerOptions,
   FormDesignerProps,
+  FormDesignerCanvasEditMode,
   FormDesignerSelection,
   FormDesignerViewMode,
   FormSourceChangeEvent,

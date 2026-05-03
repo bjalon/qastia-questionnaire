@@ -7,6 +7,7 @@ import type {
 } from "../publicTypes";
 
 export type FormDesignerViewMode = "form" | "yaml" | "preview";
+export type FormDesignerCanvasEditMode = "instant" | "commit";
 
 export type FormDesignerSelection =
   | { readonly kind: "form" }
@@ -33,6 +34,7 @@ export type FormDesignerOptions = {
   readonly defaultViewMode: FormDesignerViewMode;
   readonly viewModes: readonly FormDesignerViewMode[];
   readonly autoSaveValidVersions: boolean;
+  readonly canvasEditMode: FormDesignerCanvasEditMode;
 };
 
 export type FormDesignerProps = {

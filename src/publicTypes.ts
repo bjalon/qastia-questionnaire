@@ -71,6 +71,7 @@ export type { FormPreviewProps } from "./preview/FormPreview";
 export type {
   FormDesignerOptions,
   FormDesignerProps,
+  FormDesignerCanvasEditMode,
   FormDesignerSelection,
   FormDesignerViewMode,
   FormSourceChangeEvent,

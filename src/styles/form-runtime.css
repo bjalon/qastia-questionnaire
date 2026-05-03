@@ -517,6 +517,91 @@
   min-width: 0;
 }
 
+.qf-element-editor {
+  gap: 8px;
+}
+
+.qf-element-editor input,
+.qf-element-editor textarea {
+  width: 100%;
+  padding: 8px 10px;
+  color: var(--qf-text, #1f2933);
+  background: #ffffff;
+  border: 1px solid var(--qf-border, #d9e2df);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.qf-element-editor textarea {
+  resize: vertical;
+}
+
+.qf-element-required {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--qf-text-muted, #66737a);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.qf-element-required input {
+  width: auto;
+}
+
+.qf-element-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.qf-element-edit-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  color: var(--qf-text, #1f2933);
+  background: #ffffff;
+  border: 1px solid var(--qf-border, #d9e2df);
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.qf-element-edit-actions button:first-child {
+  color: var(--qf-accent-contrast, #ffffff);
+  background: var(--qf-accent, #2f6f73);
+  border-color: var(--qf-accent, #2f6f73);
+}
+
+.qf-element-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.qf-question-type-pill,
+.qf-required-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.qf-question-type-pill {
+  color: #315f8c;
+  background: #e7f0f7;
+}
+
+.qf-required-pill {
+  margin-left: auto;
+  color: #8a4b10;
+  background: #fff1d6;
+}
+
 .qf-canvas-actions {
   display: flex;
   gap: 4px;
@@ -556,7 +641,8 @@
 }
 
 .qf-empty-page,
-.qf-inspector-empty {
+.qf-inspector-empty,
+.qf-palette-empty {
   margin: 0;
   color: var(--qf-text-muted, #66737a);
 }
@@ -580,15 +666,23 @@
   gap: 5px;
 }
 
-.qf-inspector-fields span {
+.qf-inspector-fields span,
+.qf-palette-search span {
   color: var(--qf-text-muted, #66737a);
   font-size: 13px;
   font-weight: 700;
 }
 
+.qf-palette-search {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
 .qf-inspector-fields input,
 .qf-inspector-fields select,
 .qf-inspector-fields textarea,
+.qf-palette-search input,
 .qf-yaml-editor {
   width: 100%;
   padding: 10px 12px;

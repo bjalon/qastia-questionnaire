@@ -60,6 +60,27 @@ describe("FormRunner", () => {
 });
 
 describe("FormDesigner", () => {
+  it("shows the inspector before the searchable palette", () => {
+    render(
+      <FormDesigner
+        source={source}
+        runtime={defaultFormRuntime}
+        storage={false}
+      />,
+    );
+
+    const inspector = screen.getByRole("heading", { name: "Inspector" });
+    const palette = screen.getByRole("heading", { name: "Palette" });
+    expect(inspector.compareDocumentPosition(palette) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Recherche" }), {
+      target: { value: "oui" },
+    });
+
+    expect(screen.getByRole("button", { name: /Oui \/ non/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Texte court/i })).not.toBeInTheDocument();
+  });
+
   it("emits canvas duplicate and delete actions", async () => {
     const onSourceChange = vi.fn();
 
@@ -93,5 +114,41 @@ describe("FormDesigner", () => {
     expect(onSourceChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ reason: "canvas-delete" }),
     );
+  });
+
+  it("edits selected question blocks with save and cancel in commit mode", () => {
+    const onSourceChange = vi.fn();
+
+    render(
+      <FormDesigner
+        source={source}
+        runtime={defaultFormRuntime}
+        storage={false}
+        options={{ canvasEditMode: "commit" }}
+        onSourceChange={onSourceChange}
+      />,
+    );
+
+    const questionBlock = screen.getByText("Nom").closest(".qf-element-block");
+    if (!questionBlock) {
+      throw new Error("Expected question block");
+    }
+    fireEvent.click(questionBlock);
+    fireEvent.change(screen.getByLabelText("Titre de la question"), {
+      target: { value: "Nom complet" },
+    });
+    expect(onSourceChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+    expect(onSourceChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ reason: "inspector-edit" }),
+    );
+    expect((onSourceChange.mock.calls.at(-1)?.[0].source as FormSource).content).toContain("Nom complet");
+
+    fireEvent.change(screen.getByLabelText("Titre de la question"), {
+      target: { value: "Valeur annulee" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Annuler" }));
+    expect(screen.getByLabelText("Titre de la question")).toHaveValue("Nom");
   });
 });

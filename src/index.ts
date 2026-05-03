@@ -48,6 +48,7 @@ export type {
   FormDesignerOptions,
   FormDesignerPersistenceAdapter,
   FormDesignerProps,
+  FormDesignerCanvasEditMode,
   FormDesignerSelection,
   FormDesignerViewMode,
   DesignerCanvasProps,

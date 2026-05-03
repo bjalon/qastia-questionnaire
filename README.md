@@ -325,8 +325,14 @@ type FormDesignerOptions = {
   defaultViewMode: "form" | "yaml" | "preview";
   viewModes: readonly ("form" | "yaml" | "preview")[];
   autoSaveValidVersions: boolean;
+  canvasEditMode: "instant" | "commit";
 };
 ```
+
+`canvasEditMode` controle l'edition inline des blocs question :
+
+- `instant` applique les modifications au fil de l'edition ;
+- `commit` affiche `Enregistrer` / `Annuler` dans le bloc selectionne.
 
 La selection peut etre controlee par l'application :
 
