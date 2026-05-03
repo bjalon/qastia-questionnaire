@@ -36,11 +36,11 @@ Lot 8  — FormDesigner shell                                FAIT
 Lot 9  — Canvas designer pages/questions                   FAIT, actions avancees ajoutees
 Lot 10 — Palette a droite et ajout d'elements              FAIT
 Lot 11 — Inspectors et edition des questions               FAIT, ergonomie options amelioree
-Lot 12 — Mode YAML avec diagnostics localises              FAIT, CodeMirror reste a integrer
+Lot 12 — Mode YAML avec diagnostics localises              FAIT, CodeMirror integre
 Lot 13 — Sauvegarde locale, versions et recovery           FAIT, pruning/recovery durci
 Lot 14 — Themes et styles                                  FAIT, designer de theme non inclus
 Lot 15 — Exemple integre                                   FAIT, scenario demo a enrichir
-Lot 16 — Tests package et CI                               FAIT, couverture a etendre
+Lot 16 — Tests package et CI                               FAIT, couverture etendue
 Lot 17 — Stabilisation API publique                        FAIT
 Lot 18 — Evolutions post-V1                                DOCUMENTE
 ```
@@ -349,24 +349,25 @@ Reste a faire :
 
 ### Lot 12 — Mode YAML avec diagnostics localises
 
-Etat : **fait sans CodeMirror**.
+Etat : **fait, CodeMirror integre**.
 
 Livre :
 
 - `FormYamlEditor` ;
-- textarea YAML ;
+- editeur CodeMirror 6 ;
+- coloration YAML ;
+- numeros de ligne ;
+- lint gutter ;
+- diagnostics CodeMirror issus des `FormDiagnostic` ;
 - diagnostics localises ;
 - clic diagnostic qui selectionne la range ;
+- scroll automatique vers le diagnostic ;
 - YAML invalide sans ecran blanc.
 
 Reste a faire :
 
-- integrer CodeMirror 6 ;
-- mapper diagnostics vers decorations ;
-- afficher vagues rouges ;
-- afficher tooltip au hover ;
 - ajouter raccourcis clavier utiles ;
-- ajouter tests de mapping diagnostics -> editor.
+- ajouter tests jsdom dedies au mapping CodeMirror si le comportement devient critique.
 
 ---
 
@@ -450,26 +451,29 @@ Reste a faire :
 
 ### Lot 16 — Tests package et CI
 
-Etat : **fait, couverture a etendre**.
+Etat : **fait, couverture etendue**.
 
 Livre :
 
 - tests compilateur ;
 - tests storage ;
 - tests mutations designer ;
+- tests React `FormRunner` ;
+- tests React `FormDesigner` ;
+- tests accessibilite de base sur validation runner ;
+- tests des types de questions V1 ;
 - `test:package` ;
 - smoke test du package builde ;
+- smoke test Vite consommateur ;
+- verification que le runner seul ne charge pas le designer ;
+- job `npm audit --audit-level=high` ;
 - workflow GitHub Actions ;
 - build example en CI ;
 - publication GitHub Packages.
 
 Reste a faire :
 
-- ajouter tests React runner ;
-- ajouter tests React designer ;
-- ajouter tests accessibility de base ;
-- ajouter tests sur tous les types de questions ;
-- ajouter un job `npm audit` si souhaite ;
+- ajouter tests React plus fins sur inspector, palette, versions et CodeMirror ;
 - ajouter Pages deploy pour l'exemple si souhaite.
 
 ---
@@ -533,23 +537,13 @@ Reste a faire :
 ### Priorite 1 — Stabilisation avant publication V1
 
 - Relire API publique et entrypoints.
-- Ajouter tests React minimaux :
-  - `FormRunner` submit OK/KO ;
-  - `FormDesigner` changement de titre ;
-  - palette ajout question ;
-  - inspector modification question.
 - Decider si les types `Raw*` restent publics pour V1.
 - Faire une passe fonctionnelle dans `qastia-coaching` quand l'ecran consommateur final sera cable.
 - Publier sur GitHub Packages via tag.
 
 ### Priorite 2 — Robustesse edition
 
-- Integrer CodeMirror 6.
-- Ajouter decorations de diagnostics dans le YAML.
 - Ajouter erreurs inline dans inspector.
-- Ajouter UI d'options en liste editable.
-- Ajouter suppression/duplication de pages/questions.
-- Ajouter derniere version valide automatique.
 - Gerer erreurs storage visibles dans l'UI.
 
 ### Priorite 3 — Ergonomie et qualite produit

@@ -495,6 +495,8 @@ Les diagnostics contiennent :
 
 Le helper `rangeForPath` est exporte depuis `@bjalon/form-runtime/compiler` pour localiser un chemin YAML dans une source.
 
+Dans `FormDesigner`, le mode YAML utilise CodeMirror 6. Les diagnostics de compilation sont projetes dans l'editeur via le lint gutter et le panneau de diagnostics. Cliquer un diagnostic positionne la selection sur la range YAML correspondante quand elle est disponible.
+
 ## Runtime Personnalise
 
 Le runtime par defaut contient les types de questions, themes et validateurs fournis par la librairie. Une application peut ajouter ou remplacer ces registres :

@@ -48,11 +48,11 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Build package
-        run: npm run build
+      - name: Audit high severity vulnerabilities
+        run: npm run audit
 
-      - name: Test built package
-        run: node tests/package-smoke.mjs
+      - name: Test built package and Vite consumer
+        run: npm run test:package
 
       - name: Build integrated example
         run: npm run build:example

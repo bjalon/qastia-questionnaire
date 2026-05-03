@@ -21,15 +21,16 @@ export function QuestionRenderer({
   onChange,
 }: QuestionRendererProps): React.ReactElement {
   const describedBy = error ? `${question.id}-error` : undefined;
+  const labelledBy = `${question.id}-label`;
 
   return (
     <fieldset className="qf-question" data-question-id={question.id} data-question-type={question.questionType}>
-      <legend>
+      <legend id={labelledBy}>
         <span>{question.title}</span>
         {question.required ? <strong aria-label="obligatoire">*</strong> : null}
       </legend>
       {question.description ? <p className="qf-question-description">{question.description}</p> : null}
-      {renderControl(question, value, describedBy, disabled, Boolean(error), onChange)}
+      {renderControl(question, value, describedBy, labelledBy, disabled, Boolean(error), onChange)}
       {error ? (
         <p className="qf-error" id={`${question.id}-error`}>
           {error}
@@ -43,6 +44,7 @@ function renderControl(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  labelledBy: string,
   disabled: boolean,
   invalid: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
@@ -52,6 +54,7 @@ function renderControl(
       return (
         <input
           aria-describedby={describedBy}
+          aria-labelledby={labelledBy}
           aria-invalid={invalid}
           className="qf-input"
           name={question.id}
@@ -65,6 +68,7 @@ function renderControl(
       return (
         <textarea
           aria-describedby={describedBy}
+          aria-labelledby={labelledBy}
           aria-invalid={invalid}
           className="qf-textarea"
           name={question.id}
@@ -76,7 +80,7 @@ function renderControl(
       );
     case "yes-no":
       return (
-        <div className="qf-segmented" aria-describedby={describedBy}>
+        <div className="qf-segmented" aria-describedby={describedBy} aria-labelledby={labelledBy}>
           <button
             type="button"
             className={value === true ? "is-selected" : ""}
@@ -96,13 +100,14 @@ function renderControl(
         </div>
       );
     case "single-choice":
-      return renderOptions(question, value, describedBy, disabled, invalid, onChange, "radio");
+      return renderOptions(question, value, describedBy, labelledBy, disabled, invalid, onChange, "radio");
     case "multiple-choice":
-      return renderOptions(question, value, describedBy, disabled, invalid, onChange, "checkbox");
+      return renderOptions(question, value, describedBy, labelledBy, disabled, invalid, onChange, "checkbox");
     case "dropdown":
       return (
         <select
           aria-describedby={describedBy}
+          aria-labelledby={labelledBy}
           aria-invalid={invalid}
           className="qf-input"
           name={question.id}
@@ -122,6 +127,7 @@ function renderControl(
       return (
         <input
           aria-describedby={describedBy}
+          aria-labelledby={labelledBy}
           aria-invalid={invalid}
           className="qf-input"
           name={question.id}
@@ -135,6 +141,7 @@ function renderControl(
       return (
         <input
           aria-describedby={describedBy}
+          aria-labelledby={labelledBy}
           aria-invalid={invalid}
           className="qf-input"
           name={question.id}
@@ -145,9 +152,9 @@ function renderControl(
         />
       );
     case "linear-scale":
-      return renderScale(question, value, describedBy, disabled, onChange);
+      return renderScale(question, value, describedBy, labelledBy, disabled, onChange);
     case "rating":
-      return renderRating(question, value, describedBy, disabled, onChange);
+      return renderRating(question, value, describedBy, labelledBy, disabled, onChange);
     default:
       return (
         <p className="qf-unsupported" aria-describedby={describedBy}>
@@ -161,6 +168,7 @@ function renderOptions(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  labelledBy: string,
   disabled: boolean,
   invalid: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
@@ -182,6 +190,7 @@ function renderOptions(
               disabled={disabled}
               aria-invalid={invalid}
               aria-describedby={describedBy}
+              aria-labelledby={labelledBy}
               onChange={(event) => {
                 if (inputType === "radio") {
                   onChange(question.id, option.value);
@@ -204,6 +213,7 @@ function renderScale(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  labelledBy: string,
   disabled: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
 ): React.ReactElement {
@@ -213,7 +223,7 @@ function renderScale(
   const maxLabel = stringFromRecord(question.config, "maxLabel");
 
   return (
-    <div className="qf-scale" aria-describedby={describedBy}>
+    <div className="qf-scale" aria-describedby={describedBy} aria-labelledby={labelledBy}>
       {minLabel ? <span>{minLabel}</span> : null}
       <div>
         {range(min, max).map((item) => (
@@ -237,13 +247,14 @@ function renderRating(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  labelledBy: string,
   disabled: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
 ): React.ReactElement {
   const max = numberFromRecord(question.config, "max") ?? 5;
 
   return (
-    <div className="qf-rating" aria-describedby={describedBy}>
+    <div className="qf-rating" aria-describedby={describedBy} aria-labelledby={labelledBy}>
       {range(1, max).map((item) => (
         <button
           key={item}
