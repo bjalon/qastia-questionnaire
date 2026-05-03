@@ -3,10 +3,12 @@ import {
   buildSubmitPayload,
   compileForm,
   defaultFormRuntime,
+  LocalStorageFormDesignerPersistenceAdapter,
   validateAndBuildSubmitPayload,
   validateAnswers,
   type FormSource,
 } from "../src";
+import { rangeForPath } from "../src/compiler";
 import { __designerMutationTestApi } from "../src/designer/sourceMutations";
 
 const validSource: FormSource = {
@@ -52,6 +54,20 @@ describe("compileForm", () => {
 
     expect(result.status).toBe("degraded");
     expect(result.diagnostics.some((diagnostic) => diagnostic.code === "QUESTION_UNKNOWN_TYPE")).toBe(true);
+    expect(result.diagnostics.find((diagnostic) => diagnostic.code === "QUESTION_UNKNOWN_TYPE")?.range?.start.line).toBe(11);
+  });
+
+  it("treats unknown fields as errors in strict mode", () => {
+    const result = compileForm(
+      {
+        content: validSource.content.replace("metadata:", "extra: true\nmetadata:"),
+      },
+      defaultFormRuntime,
+      { mode: "strict" },
+    );
+
+    expect(result.status).toBe("invalid");
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "SCHEMA_UNKNOWN_FIELD")).toBe(true);
   });
 
   it("returns invalid for malformed YAML", () => {
@@ -59,6 +75,15 @@ describe("compileForm", () => {
 
     expect(result.status).toBe("invalid");
     expect(result.diagnostics[0]?.code).toBe("YAML_SYNTAX_ERROR");
+  });
+});
+
+describe("source map", () => {
+  it("locates nested YAML paths", () => {
+    const range = rangeForPath(validSource.content, ["pages", "0", "elements", "1", "questionType"]);
+
+    expect(range?.start.line).toBe(16);
+    expect(range?.start.column).toBe(9);
   });
 });
 
@@ -112,6 +137,32 @@ describe("submission", () => {
         },
       ],
     });
+  });
+});
+
+describe("storage adapters", () => {
+  it("persists designer drafts without React", async () => {
+    const values = new Map<string, string>();
+    const adapter = new LocalStorageFormDesignerPersistenceAdapter({
+      storage: {
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, value),
+        removeItem: (key) => values.delete(key),
+      },
+    });
+
+    await adapter.saveDraft({
+      key: "demo",
+      source: validSource,
+      updatedAt: "2026-05-03T20:00:00.000Z",
+      apiVersion: 1,
+    });
+
+    const draft = await adapter.loadDraft("demo");
+    expect(draft?.source.content).toBe(validSource.content);
+
+    await adapter.clearDraft("demo");
+    expect(await adapter.loadDraft("demo")).toBeNull();
   });
 });
 

@@ -583,7 +583,17 @@
 }
 
 .qf-designer-diagnostics strong {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
   font-size: 12px;
+}
+
+.qf-designer-diagnostics small,
+.qf-designer-diagnostics em {
+  color: var(--qf-text-muted, #66737a);
+  font-style: normal;
 }
 
 .qf-preview-json pre {

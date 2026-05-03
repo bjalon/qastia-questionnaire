@@ -296,6 +296,38 @@ L'application hote peut fournir ses propres boutons dans la topbar du designer :
 
 Ces actions restent applicatives. La librairie ne decide pas comment sauvegarder, publier ou persister le formulaire.
 
+### Stockage Decouple
+
+Le stockage du designer passe par un adapter independant de React. L'application peut donc brancher `localStorage`, une API REST, Firebase ou tout autre backend sans que la librairie connaisse ce stockage.
+
+Adapter local fourni :
+
+```tsx
+import {
+  FormDesigner,
+  LocalStorageFormDesignerPersistenceAdapter,
+} from "@bjalon/form-runtime";
+
+const storage = new LocalStorageFormDesignerPersistenceAdapter({
+  namespace: "qastia-coaching:form-drafts",
+});
+
+<FormDesigner
+  defaultSource={initialSource}
+  storage={storage}
+  storageKey="client-session-intake"
+  onSourceChange={(event) => console.log(event.reason)}
+/>;
+```
+
+L'adapter public expose seulement :
+
+- `loadDraft(key)` ;
+- `saveDraft(snapshot)` ;
+- `clearDraft(key)`.
+
+Le type `FormDesignerPersistenceAdapter` est exporte pour brancher un stockage applicatif.
+
 ## FormRunner
 
 `FormRunner` affiche un formulaire compile sans dependre du designer.
@@ -352,6 +384,32 @@ Le runner supporte :
 
 Les questions optionnelles sans reponse sont omises du payload. Les questions obligatoires manquantes produisent une erreur de validation et `onSubmit` n'est pas appele.
 
+## Compilation Et Diagnostics
+
+`compileForm` est independant de React. Il peut etre utilise cote client, cote serveur, dans des tests ou dans un pipeline de validation.
+
+Modes disponibles :
+
+```ts
+compileForm(source, runtime, { mode: "authoring" });
+compileForm(source, runtime, { mode: "strict" });
+```
+
+- `authoring` : permet de continuer avec un modele `degraded` quand le designer peut encore rendre quelque chose.
+- `strict` : refuse les erreurs structurelles, les champs inconnus, les valeurs invalides, les themes inconnus et les modes de navigation invalides.
+
+Les diagnostics contiennent :
+
+- `code` ;
+- `severity` ;
+- `message` ;
+- `path` YAML logique ;
+- `range` avec ligne/colonne quand localisable ;
+- `pageId` et `elementId` quand disponibles ;
+- `hint` de correction.
+
+Le helper `rangeForPath` est exporte depuis `@bjalon/form-runtime/compiler` pour localiser un chemin YAML dans une source.
+
 ## Runtime Personnalise
 
 Le runtime par defaut contient les types de questions, themes et validateurs fournis par la librairie. Une application peut ajouter ou remplacer ces registres :
@@ -397,8 +455,9 @@ Le package expose des entrypoints separes pour limiter ce qu'une application imp
 import { FormDesigner } from "@bjalon/form-runtime/designer";
 import { FormPreview } from "@bjalon/form-runtime/preview";
 import { FormRunner } from "@bjalon/form-runtime/runner";
-import { compileForm } from "@bjalon/form-runtime/compiler";
+import { compileForm, rangeForPath } from "@bjalon/form-runtime/compiler";
 import { createFormRuntime } from "@bjalon/form-runtime/runtime";
+import { LocalStorageFormDesignerPersistenceAdapter } from "@bjalon/form-runtime/storage";
 import "@bjalon/form-runtime/styles.css";
 ```
 

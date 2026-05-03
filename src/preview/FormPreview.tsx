@@ -3,6 +3,7 @@ import type React from "react";
 import type {
   CompileFormResult,
   FormAnswers,
+  FormDiagnostic,
   FormRuntime,
   FormSubmitPayload,
 } from "../publicTypes";
@@ -90,8 +91,20 @@ function DiagnosticsList({
         <li key={`${diagnostic.code}-${index}`} data-severity={diagnostic.severity}>
           <strong>{diagnostic.code}</strong>
           <span>{diagnostic.message}</span>
+          {diagnosticLocation(diagnostic) ? <small>{diagnosticLocation(diagnostic)}</small> : null}
+          {diagnostic.hint ? <em>{diagnostic.hint}</em> : null}
         </li>
       ))}
     </ul>
   );
+}
+
+function diagnosticLocation(diagnostic: FormDiagnostic): string | null {
+  if (diagnostic.range) {
+    return `ligne ${diagnostic.range.start.line}, colonne ${diagnostic.range.start.column}`;
+  }
+  if (diagnostic.path && diagnostic.path.length > 0) {
+    return diagnostic.path.join(".");
+  }
+  return null;
 }

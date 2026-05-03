@@ -1,6 +1,7 @@
 import type React from "react";
 import type {
   CompileFormResult,
+  FormDesignerPersistenceAdapter,
   FormRuntime,
   FormSource,
 } from "../publicTypes";
@@ -32,6 +33,8 @@ export type FormDesignerProps = {
   readonly defaultSource?: FormSource;
   readonly runtime?: FormRuntime;
   readonly actions?: React.ReactNode;
+  readonly storage?: false | FormDesignerPersistenceAdapter;
+  readonly storageKey?: string;
   readonly options?: Partial<FormDesignerOptions>;
   readonly onSourceChange?: (event: FormSourceChangeEvent) => void;
   readonly onCompile?: (result: CompileFormResult) => void;

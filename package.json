@@ -39,6 +39,10 @@
       "types": "./dist/types/designer.d.ts",
       "import": "./dist/designer.js"
     },
+    "./storage": {
+      "types": "./dist/types/storage.d.ts",
+      "import": "./dist/storage.js"
+    },
     "./styles.css": "./dist/form-runtime.css"
   },
   "sideEffects": [

@@ -6,8 +6,11 @@ import { FormPreview } from "../preview/FormPreview";
 import type {
   CompileFormResult,
   CompiledForm,
+  FormDiagnostic,
+  FormDesignerPersistenceAdapter,
   FormSource,
 } from "../publicTypes";
+import { FORM_RUNTIME_PUBLIC_API_VERSION } from "../domain/PublicApi";
 import { DesignerCanvas } from "./canvas/DesignerCanvas";
 import { defaultDesignerOptions } from "./defaultDesignerOptions";
 import { FormInspector } from "./inspector/FormInspector";
@@ -44,6 +47,8 @@ export function FormDesigner({
   defaultSource = emptySource,
   runtime = defaultFormRuntime,
   actions,
+  storage = false,
+  storageKey,
   options,
   onSourceChange,
   onCompile,
@@ -54,6 +59,7 @@ export function FormDesigner({
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [openModeMenu, setOpenModeMenu] = useState(false);
+  const [storageLoaded, setStorageLoaded] = useState(source !== undefined || storage === false);
   const resolvedOptions = { ...defaultDesignerOptions, ...options };
   const currentSource = source ?? internalSource;
   const compileResult = useMemo(
@@ -65,6 +71,27 @@ export function FormDesigner({
   useEffect(() => {
     onCompile?.(compileResult);
   }, [compileResult, onCompile]);
+
+  useEffect(() => {
+    if (source || !storage || storageLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    void storage.loadDraft(resolvedStorageKey(storageKey, currentSource, form)).then((snapshot) => {
+      if (cancelled) {
+        return;
+      }
+      if (snapshot) {
+        setInternalSource(snapshot.source);
+      }
+      setStorageLoaded(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentSource, form, source, storage, storageKey, storageLoaded]);
 
   useEffect(() => {
     if (!openModeMenu) {
@@ -83,6 +110,7 @@ export function FormDesigner({
     if (!source) {
       setInternalSource(nextSource);
     }
+    persistDraft(nextSource, storage, resolvedStorageKey(storageKey, nextSource, form));
     onSourceChange?.({ source: nextSource, reason });
   }
 
@@ -179,8 +207,12 @@ export function FormDesigner({
         <ul className="qf-designer-diagnostics">
           {compileResult.diagnostics.map((diagnostic, index) => (
             <li key={`${diagnostic.code}-${index}`} data-severity={diagnostic.severity}>
-              <strong>{diagnostic.code}</strong>
+              <strong>
+                {diagnostic.code}
+                {diagnosticLocation(diagnostic) ? <small>{diagnosticLocation(diagnostic)}</small> : null}
+              </strong>
               <span>{diagnostic.message}</span>
+              {diagnostic.hint ? <em>{diagnostic.hint}</em> : null}
             </li>
           ))}
         </ul>
@@ -238,6 +270,41 @@ export function FormDesigner({
 
 function getCompiledForm(result: CompileFormResult): CompiledForm | null {
   return result.status === "valid" || result.status === "degraded" ? result.form : null;
+}
+
+function diagnosticLocation(diagnostic: FormDiagnostic): string | null {
+  if (diagnostic.range) {
+    return `ligne ${diagnostic.range.start.line}, colonne ${diagnostic.range.start.column}`;
+  }
+  if (diagnostic.path && diagnostic.path.length > 0) {
+    return diagnostic.path.join(".");
+  }
+  return null;
+}
+
+function persistDraft(
+  source: FormSource,
+  storage: false | FormDesignerPersistenceAdapter,
+  key: string,
+): void {
+  if (!storage) {
+    return;
+  }
+
+  void storage.saveDraft({
+    key,
+    source,
+    updatedAt: new Date().toISOString(),
+    apiVersion: FORM_RUNTIME_PUBLIC_API_VERSION,
+  });
+}
+
+function resolvedStorageKey(
+  explicitKey: string | undefined,
+  source: FormSource,
+  form: CompiledForm | null,
+): string {
+  return explicitKey ?? form?.id ?? source.uri ?? "default";
 }
 
 function modeLabel(mode: FormDesignerViewMode): string {

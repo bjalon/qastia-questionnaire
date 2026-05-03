@@ -51,7 +51,15 @@ export type {
   ValidatorDefinition,
   ValidatorRegistry,
 } from "./domain/Runtime";
-export type { SourcePosition, SourceRange } from "./domain/SourceRange";
+export type {
+  FormDesignerDraftSnapshot,
+  FormDesignerPersistenceAdapter,
+} from "./domain/Storage";
+export { FORM_RUNTIME_PUBLIC_API_VERSION } from "./domain/PublicApi";
+export type {
+  SourcePosition,
+  SourceRange,
+} from "./domain/SourceRange";
 export type {
   FormRunnerProps,
   FormRunnerSubmitState,
@@ -66,3 +74,6 @@ export type {
   FormSourceChangeEvent,
   FormSourceChangeReason,
 } from "./designer/types";
+export type { DesignerCanvasProps } from "./designer/canvas/DesignerCanvas";
+export type { FormInspectorProps } from "./designer/inspector/FormInspector";
+export type { QuestionPaletteProps } from "./designer/palette/QuestionPalette";

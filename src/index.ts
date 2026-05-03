@@ -1,13 +1,18 @@
 import "./styles/form-runtime.css";
 
+export { FORM_RUNTIME_PUBLIC_API_VERSION } from "./domain/PublicApi";
 export { compileForm } from "./compiler/compileForm";
 export { DebugFormFallback } from "./debug/DebugFormFallback";
+export { DesignerCanvas } from "./designer/canvas/DesignerCanvas";
 export { FormDesigner } from "./designer/FormDesigner";
 export { defaultDesignerOptions } from "./designer/defaultDesignerOptions";
+export { FormInspector } from "./designer/inspector/FormInspector";
+export { QuestionPalette } from "./designer/palette/QuestionPalette";
 export { FormPreview } from "./preview/FormPreview";
 export { createFormRuntime } from "./runtime/createFormRuntime";
 export { defaultFormRuntime } from "./runtime/defaultFormRuntime";
 export { defaultThemes } from "./runtime/defaultThemes";
+export { LocalStorageFormDesignerPersistenceAdapter } from "./storage/LocalStorageFormDesignerPersistenceAdapter";
 export { FormRunner } from "./runner/FormRunner";
 export { buildSubmitPayload, validateAndBuildSubmitPayload } from "./runner/buildSubmitPayload";
 export { validateAnswers } from "./runner/validateAnswers";
@@ -35,10 +40,14 @@ export type {
   FormMetadata,
   FormNavigationMode,
   FormRuntime,
+  FormDesignerDraftSnapshot,
   FormDesignerOptions,
+  FormDesignerPersistenceAdapter,
   FormDesignerProps,
   FormDesignerSelection,
   FormDesignerViewMode,
+  DesignerCanvasProps,
+  FormInspectorProps,
   FormPreviewProps,
   FormRunnerProps,
   FormRunnerSubmitState,
@@ -46,6 +55,7 @@ export type {
   FormSource,
   FormSourceChangeEvent,
   FormSourceChangeReason,
+  QuestionPaletteProps,
   FormSubmitEvent,
   FormSubmitPagePayload,
   FormSubmitPayload,

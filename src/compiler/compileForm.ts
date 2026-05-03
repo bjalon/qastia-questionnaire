@@ -16,7 +16,8 @@ import { defaultFormRuntime } from "../runtime/defaultFormRuntime";
 import { rawFormSchema } from "../schema/rawForm.schema";
 import { hashSource } from "./hash";
 import { diagnostic } from "./diagnostics";
-import { rangeForNeedle } from "./sourceRanges";
+import { rangeFromOffsets } from "./sourceRanges";
+import { rangeForPath } from "./sourceMap/yamlRanges";
 import { normalizeOptions } from "../questionTypes/defaultQuestionTypes";
 
 const topLevelFields = new Set(["version", "kind", "id", "metadata", "theme", "navigation", "pages"]);
@@ -54,7 +55,7 @@ export function compileForm(
         fallback,
         diagnostics: document.errors.map((error) =>
           diagnostic("YAML_SYNTAX_ERROR", error.message, {
-            range: rangeForNeedle(source.content, "pages"),
+            range: rangeFromOffsets(source.content, error.pos[0], error.pos[1]),
           }),
         ),
       };
@@ -87,12 +88,14 @@ export function compileForm(
       ...schemaResult.error.issues.map((issue) =>
         diagnostic("SCHEMA_INVALID_VALUE", issue.message, {
           path: issue.path.map(String),
+          range: rangeForPath(source.content, issue.path.map(String)),
+          severity: mode === "strict" ? "error" : "warning",
         }),
       ),
     );
   }
 
-  diagnostics.push(...unknownFieldDiagnostics(parsed, topLevelFields, [], source.content));
+  diagnostics.push(...unknownFieldDiagnostics(parsed, topLevelFields, [], source.content, mode));
 
   const blocking = validateHeader(parsed, diagnostics, source.content, mode);
   if (blocking) {
@@ -100,13 +103,13 @@ export function compileForm(
   }
 
   const metadata = isRecord(parsed.metadata) ? parsed.metadata : {};
-  diagnostics.push(...unknownFieldDiagnostics(metadata, metadataFields, ["metadata"], source.content));
+  diagnostics.push(...unknownFieldDiagnostics(metadata, metadataFields, ["metadata"], source.content, mode));
 
   const theme = isRecord(parsed.theme) ? parsed.theme : {};
-  diagnostics.push(...unknownFieldDiagnostics(theme, themeFields, ["theme"], source.content));
+  diagnostics.push(...unknownFieldDiagnostics(theme, themeFields, ["theme"], source.content, mode));
 
   const navigation = isRecord(parsed.navigation) ? parsed.navigation : {};
-  diagnostics.push(...unknownFieldDiagnostics(navigation, navigationFields, ["navigation"], source.content));
+  diagnostics.push(...unknownFieldDiagnostics(navigation, navigationFields, ["navigation"], source.content, mode));
 
   const form: CompiledForm = {
     id: stringOr(parsed.id, "form"),
@@ -120,9 +123,9 @@ export function compileForm(
       locale: optionalString(metadata.locale),
     },
     theme: {
-      id: resolveThemeId(theme.id, runtime),
+      id: resolveThemeId(theme.id, runtime, diagnostics, source.content, mode),
     },
-    navigation: resolveNavigationMode(navigation.mode),
+    navigation: resolveNavigationMode(navigation.mode, diagnostics, source.content, mode),
     pages: compilePages(parsed.pages, runtime, diagnostics, source.content, mode),
   };
 
@@ -161,7 +164,8 @@ function validateHeader(
     diagnostics.push(
       diagnostic("FORM_UNSUPPORTED_VERSION", "Seule la version 1 est supportee.", {
         path: ["version"],
-        range: rangeForNeedle(source, "version"),
+        range: rangeForPath(source, ["version"]),
+        hint: "Mettez version: 1 ou migrez la source avant compilation.",
       }),
     );
     blocking = mode === "strict";
@@ -171,7 +175,8 @@ function validateHeader(
     diagnostics.push(
       diagnostic("FORM_INVALID_KIND", 'Le champ kind doit valoir "form".', {
         path: ["kind"],
-        range: rangeForNeedle(source, "kind"),
+        range: rangeForPath(source, ["kind"]),
+        hint: 'Mettez kind: "form".',
       }),
     );
     blocking = mode === "strict";
@@ -191,7 +196,9 @@ function compilePages(
     diagnostics.push(
       diagnostic("SCHEMA_MISSING_FIELD", "Le formulaire doit definir pages.", {
         path: ["pages"],
+        range: rangeForPath(source, ["pages"]),
         severity: mode === "strict" ? "error" : "warning",
+        hint: "Ajoutez au moins une page dans pages.",
       }),
     );
     return mode === "authoring"
@@ -209,13 +216,15 @@ function compilePages(
   return rawPages
     .filter((page): page is Readonly<Record<string, unknown>> => isRecord(page))
     .map((page, pageIndex) => {
-      diagnostics.push(...unknownFieldDiagnostics(page, pageFields, ["pages", String(pageIndex)], source));
+      diagnostics.push(...unknownFieldDiagnostics(page, pageFields, ["pages", String(pageIndex)], source, mode));
       const id = typeof page.id === "string" && page.id.length > 0 ? page.id : `page_${pageIndex + 1}`;
       if (typeof page.id !== "string" || page.id.length === 0) {
         diagnostics.push(
           diagnostic("PAGE_MISSING_ID", "La page doit definir un id.", {
             severity: mode === "strict" ? "error" : "warning",
             path: ["pages", String(pageIndex), "id"],
+            range: rangeForPath(source, ["pages", String(pageIndex)]),
+            hint: "Ajoutez un id stable a la page.",
           }),
         );
       }
@@ -224,7 +233,9 @@ function compilePages(
         diagnostics.push(
           diagnostic("PAGE_DUPLICATE_ID", `L'id de page "${id}" est duplique.`, {
             path: ["pages", String(pageIndex), "id"],
+            range: rangeForPath(source, ["pages", String(pageIndex), "id"]),
             pageId: id,
+            hint: "Les ids de pages doivent etre uniques dans tout le formulaire.",
           }),
         );
       }
@@ -236,6 +247,7 @@ function compilePages(
           diagnostic("PAGE_EMPTY", "La page ne contient aucun element.", {
             severity: mode === "strict" ? "error" : "info",
             path: ["pages", String(pageIndex), "elements"],
+            range: rangeForPath(source, ["pages", String(pageIndex), "elements"]),
             pageId: id,
           }),
         );
@@ -264,7 +276,9 @@ function compileElements(
       diagnostic("SCHEMA_MISSING_FIELD", "La page doit definir elements.", {
         severity: mode === "strict" ? "error" : "warning",
         path: ["pages", String(pageIndex), "elements"],
+        range: rangeForPath(source, ["pages", String(pageIndex), "elements"]),
         pageId,
+        hint: "Ajoutez elements: [] ou une liste d'elements.",
       }),
     );
     return [];
@@ -278,21 +292,32 @@ function compileElements(
       diagnostics.push(
         diagnostic("SCHEMA_INVALID_VALUE", "Un element doit etre un objet.", {
           path: ["pages", String(pageIndex), "elements", String(elementIndex)],
+          range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex)]),
           pageId,
         }),
       );
       return;
     }
 
-    diagnostics.push(...unknownFieldDiagnostics(element, elementFields, ["pages", String(pageIndex), "elements", String(elementIndex)], source));
+    diagnostics.push(
+      ...unknownFieldDiagnostics(
+        element,
+        elementFields,
+        ["pages", String(pageIndex), "elements", String(elementIndex)],
+        source,
+        mode,
+      ),
+    );
     const id = typeof element.id === "string" && element.id.length > 0 ? element.id : `${pageId}_element_${elementIndex + 1}`;
     if (typeof element.id !== "string" || element.id.length === 0) {
       diagnostics.push(
         diagnostic("ELEMENT_MISSING_ID", "L'element doit definir un id.", {
           severity: mode === "strict" ? "error" : "warning",
           path: ["pages", String(pageIndex), "elements", String(elementIndex), "id"],
+          range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex)]),
           pageId,
           elementId: id,
+          hint: "Ajoutez un id stable a l'element.",
         }),
       );
     }
@@ -301,8 +326,10 @@ function compileElements(
       diagnostics.push(
         diagnostic("ELEMENT_DUPLICATE_ID", `L'id d'element "${id}" est duplique dans la page.`, {
           path: ["pages", String(pageIndex), "elements", String(elementIndex), "id"],
+          range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex), "id"]),
           pageId,
           elementId: id,
+          hint: "Les ids d'elements doivent etre uniques dans une page.",
         }),
       );
     }
@@ -323,14 +350,16 @@ function compileElements(
       diagnostics.push(
         diagnostic("ELEMENT_UNKNOWN_TYPE", `Le type d'element "${type}" est inconnu.`, {
           path: ["pages", String(pageIndex), "elements", String(elementIndex), "type"],
+          range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex), "type"]),
           pageId,
           elementId: id,
+          hint: 'Utilisez type: "question" ou type: "statement".',
         }),
       );
       return;
     }
 
-    const question = compileQuestion(element, id, runtime, diagnostics, pageId, pageIndex, elementIndex);
+    const question = compileQuestion(element, id, runtime, diagnostics, source, pageId, pageIndex, elementIndex);
     if (question) {
       compiled.push(question);
     }
@@ -344,6 +373,7 @@ function compileQuestion(
   id: string,
   runtime: FormRuntime,
   diagnostics: FormDiagnostic[],
+  source: string,
   pageId: string,
   pageIndex: number,
   elementIndex: number,
@@ -354,8 +384,10 @@ function compileQuestion(
     diagnostics.push(
       diagnostic("QUESTION_UNKNOWN_TYPE", `Le type de question "${questionType || "(vide)"}" est inconnu.`, {
         path: ["pages", String(pageIndex), "elements", String(elementIndex), "questionType"],
+        range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex), "questionType"]),
         pageId,
         elementId: id,
+        hint: "Ajoutez le type au runtime ou choisissez un type de question disponible.",
       }),
     );
     return null;
@@ -365,8 +397,10 @@ function compileQuestion(
     diagnostics.push(
       diagnostic("QUESTION_MISSING_TITLE", "La question doit definir un titre.", {
         path: ["pages", String(pageIndex), "elements", String(elementIndex), "title"],
+        range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex), "title"]),
         pageId,
         elementId: id,
+        hint: "Ajoutez un titre visible par le participant.",
       }),
     );
   }
@@ -384,7 +418,15 @@ function compileQuestion(
     validation: isRecord(element.validation) ? element.validation : {},
   };
 
-  diagnostics.push(...definition.validateConfig(question));
+  diagnostics.push(
+    ...definition.validateConfig(question).map((item) => ({
+      ...item,
+      path: item.path ?? ["pages", String(pageIndex), "elements", String(elementIndex), "config"],
+      range: item.range ?? rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex), "config"]),
+      pageId: item.pageId ?? pageId,
+      elementId: item.elementId ?? id,
+    })),
+  );
   return question;
 }
 
@@ -392,13 +434,48 @@ function normalizeQuestionOptions(value: unknown): readonly QuestionOption[] {
   return normalizeOptions(value);
 }
 
-function resolveThemeId(value: unknown, runtime: FormRuntime): string {
+function resolveThemeId(
+  value: unknown,
+  runtime: FormRuntime,
+  diagnostics: FormDiagnostic[],
+  source: string,
+  mode: "authoring" | "strict",
+): string {
   const requested = typeof value === "string" ? value : "qastia-light";
-  return runtime.themes.has(requested) ? requested : "qastia-light";
+  if (runtime.themes.has(requested)) {
+    return requested;
+  }
+
+  diagnostics.push(
+    diagnostic("FORM_UNKNOWN_THEME", `Le theme "${requested}" est inconnu.`, {
+      severity: mode === "strict" ? "error" : "warning",
+      path: ["theme", "id"],
+      range: rangeForPath(source, ["theme", "id"]),
+      hint: "Ajoutez le theme au runtime ou utilisez un theme disponible.",
+    }),
+  );
+  return "qastia-light";
 }
 
-function resolveNavigationMode(value: unknown): FormNavigationMode {
-  return value === "single-page" ? "single-page" : "paged";
+function resolveNavigationMode(
+  value: unknown,
+  diagnostics: FormDiagnostic[],
+  source: string,
+  mode: "authoring" | "strict",
+): FormNavigationMode {
+  if (value === undefined || value === "paged" || value === "single-page") {
+    return value === "single-page" ? "single-page" : "paged";
+  }
+
+  diagnostics.push(
+    diagnostic("FORM_INVALID_NAVIGATION_MODE", 'navigation.mode doit valoir "paged" ou "single-page".', {
+      severity: mode === "strict" ? "error" : "warning",
+      path: ["navigation", "mode"],
+      range: rangeForPath(source, ["navigation", "mode"]),
+      hint: 'Utilisez navigation.mode: "paged" pour un formulaire pagine.',
+    }),
+  );
+  return "paged";
 }
 
 function unknownFieldDiagnostics(
@@ -406,14 +483,16 @@ function unknownFieldDiagnostics(
   allowed: ReadonlySet<string>,
   path: readonly string[],
   source: string,
+  mode: "authoring" | "strict",
 ): readonly FormDiagnostic[] {
   return Object.keys(record)
     .filter((key) => !allowed.has(key))
     .map((key) =>
       diagnostic("SCHEMA_UNKNOWN_FIELD", `Champ inconnu "${key}".`, {
-        severity: "warning",
+        severity: mode === "strict" ? "error" : "warning",
         path: [...path, key],
-        range: rangeForNeedle(source, key),
+        range: rangeForPath(source, [...path, key]),
+        hint: "Supprimez ce champ ou ajoutez son support au schema public.",
       }),
     );
 }

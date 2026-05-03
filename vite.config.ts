@@ -13,6 +13,7 @@ export default defineConfig({
         runner: resolve(__dirname, "src/runner.ts"),
         preview: resolve(__dirname, "src/preview.ts"),
         designer: resolve(__dirname, "src/designer.ts"),
+        storage: resolve(__dirname, "src/storage.ts"),
       },
       name: "FormRuntime",
       fileName: (_format, entryName) => `${entryName}.js`,
