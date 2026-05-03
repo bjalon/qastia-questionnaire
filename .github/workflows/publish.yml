@@ -1,0 +1,112 @@
+name: Build and Publish
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish package to GitHub Packages"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build package
+        run: npm run build
+
+      - name: Build integrated example
+        run: npm run build:example
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: form-runtime-dist
+          path: dist
+
+      - name: Upload integrated example artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: form-runtime-integrated-example
+          path: dist-example
+
+  publish:
+    name: Publish to GitHub Packages
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == 'true')
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate package scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE_SCOPE="$(node -p "require('./package.json').name.match(/^@([^/]+)\//)?.[1] ?? ''")"
+          if [ "${PACKAGE_SCOPE}" != "${GITHUB_REPOSITORY_OWNER}" ]; then
+            echo "::error::GitHub Packages npm requires the package scope to match the repository owner when publishing with GITHUB_TOKEN. Current package scope: @${PACKAGE_SCOPE}; repository owner: ${GITHUB_REPOSITORY_OWNER}."
+            exit 1
+          fi
+
+          echo "Package scope @${PACKAGE_SCOPE} matches repository owner ${GITHUB_REPOSITORY_OWNER}."
+
+      - name: Setup Node for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: "@bjalon"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish package
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
