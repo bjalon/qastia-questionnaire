@@ -10,12 +10,15 @@ export const rawElementSchema = z
     required: z.boolean().optional(),
     options: z
       .array(
-        z
-          .object({
-            value: z.string(),
-            label: z.string(),
-          })
-          .passthrough(),
+        z.union([
+          z.string(),
+          z
+            .object({
+              value: z.string().optional(),
+              label: z.string().optional(),
+            })
+            .passthrough(),
+        ]),
       )
       .optional(),
     config: z.record(z.unknown()).optional(),

@@ -2,6 +2,7 @@ import YAML from "yaml";
 import type {
   FormRuntime,
   FormSource,
+  QuestionDraft,
   QuestionOption,
 } from "../publicTypes";
 import type { FormDesignerSelection } from "./types";
@@ -72,6 +73,7 @@ export function updateElementSource(
   patch: {
     readonly title?: string;
     readonly description?: string;
+    readonly questionType?: string;
     readonly required?: boolean;
     readonly options?: readonly QuestionOption[];
     readonly config?: Readonly<Record<string, unknown>>;
@@ -85,14 +87,12 @@ export function updateElementSource(
     }
     applyStringPatch(element, "title", patch.title);
     applyStringPatch(element, "description", patch.description);
+    applyStringPatch(element, "questionType", patch.questionType);
     if (patch.required !== undefined) {
       element.required = patch.required;
     }
     if (patch.options !== undefined) {
-      element.options = patch.options.map((option) => ({
-        value: option.value,
-        label: option.label,
-      }));
+      element.options = patch.options.map((option) => option.label.trim()).filter(Boolean);
     }
     if (patch.config !== undefined) {
       element.config = compactRecord(patch.config);
@@ -208,7 +208,7 @@ export function addQuestionSource(
     const selectedElementIndex = selection.kind === "element" && selection.pageId === nextPageId
       ? elements.findIndex((item) => isRecord(item) && item.id === selection.elementId)
       : -1;
-    elements.splice(selectedElementIndex >= 0 ? selectedElementIndex + 1 : elements.length, 0, { ...draft });
+    elements.splice(selectedElementIndex >= 0 ? selectedElementIndex + 1 : elements.length, 0, questionDraftForSource(draft));
   });
 
   return { source: nextSource, pageId: nextPageId, elementId: nextElementId };
@@ -269,19 +269,24 @@ export function parseOptionsText(value: string): readonly QuestionOption[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line, index) => {
-      const [rawValue, ...labelParts] = line.split("|");
-      const optionValue = (rawValue ?? `option_${index + 1}`).trim();
-      const label = labelParts.join("|").trim() || optionValue;
+    .map((label) => {
       return {
-        value: optionValue,
+        value: label,
         label,
       };
     });
 }
 
 export function formatOptionsText(options: readonly QuestionOption[]): string {
-  return options.map((option) => `${option.value} | ${option.label}`).join("\n");
+  return options.map((option) => option.label).join("\n");
+}
+
+function questionDraftForSource(draft: QuestionDraft): MutableRecord {
+  const record: MutableRecord = { ...draft };
+  if (draft.options !== undefined) {
+    record.options = draft.options.map((option) => option.label.trim()).filter(Boolean);
+  }
+  return record;
 }
 
 function parseFormSource(content: string): MutableRecord {

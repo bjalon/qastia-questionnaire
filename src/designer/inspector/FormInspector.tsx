@@ -1,15 +1,18 @@
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import type {
   CompiledForm,
   CompiledFormElement,
   CompiledFormPage,
+  FormRuntime,
   QuestionOption,
+  QuestionTypeId,
 } from "../../publicTypes";
 import type { FormDesignerSelection } from "../types";
-import { parseOptionsText } from "../sourceMutations";
 
 export type FormInspectorProps = {
   readonly form: CompiledForm | null;
+  readonly runtime: FormRuntime;
   readonly selection: FormDesignerSelection;
   readonly onUpdateForm: (patch: { readonly title?: string; readonly description?: string }) => void;
   readonly onUpdateFormSettings: (patch: {
@@ -23,8 +26,9 @@ export type FormInspectorProps = {
     patch: {
       readonly title?: string;
       readonly description?: string;
+      readonly questionType?: QuestionTypeId;
       readonly required?: boolean;
-      readonly options?: ReturnType<typeof parseOptionsText>;
+      readonly options?: readonly QuestionOption[];
       readonly config?: Readonly<Record<string, unknown>>;
       readonly validation?: Readonly<Record<string, unknown>>;
     },
@@ -33,6 +37,7 @@ export type FormInspectorProps = {
 
 export function FormInspector({
   form,
+  runtime,
   selection,
   onUpdateForm,
   onUpdateFormSettings,
@@ -43,7 +48,7 @@ export function FormInspector({
   const element = findSelectedElement(page, selection);
 
   return (
-    <section className="qf-designer-panel">
+    <section className="qf-designer-panel" data-qf-inspector="true">
       <header>
         <h2>Inspector</h2>
       </header>
@@ -72,6 +77,7 @@ export function FormInspector({
         <ElementFields
           pageId={selection.pageId}
           element={element}
+          runtime={runtime}
           onChange={onUpdateElement}
         />
       ) : null}
@@ -132,12 +138,29 @@ function FormFields({
 function ElementFields({
   pageId,
   element,
+  runtime,
   onChange,
 }: {
   readonly pageId: string;
   readonly element: CompiledFormElement;
+  readonly runtime: FormRuntime;
   readonly onChange: FormInspectorProps["onUpdateElement"];
 }): React.ReactElement {
+  function changeQuestionType(questionType: QuestionTypeId): void {
+    if (element.type !== "question") {
+      return;
+    }
+
+    const definition = runtime.questionTypes.get(questionType);
+    const draft = definition?.createDefaultQuestion(element.id);
+    onChange(pageId, element.id, {
+      questionType,
+      options: draft?.options ?? [],
+      config: draft?.config ?? definition?.defaultConfig ?? {},
+      validation: draft?.validation ?? {},
+    });
+  }
+
   return (
     <div className="qf-inspector-fields">
       <label>
@@ -154,6 +177,19 @@ function ElementFields({
       </label>
       {element.type === "question" ? (
         <>
+          <label>
+            <span>Type</span>
+            <select
+              value={element.questionType}
+              onChange={(event) => changeQuestionType(event.currentTarget.value)}
+            >
+              {Array.from(runtime.questionTypes.values()).map((definition) => (
+                <option key={definition.id} value={definition.id}>
+                  {definition.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="qf-checkbox-field">
             <input
               type="checkbox"
@@ -162,7 +198,7 @@ function ElementFields({
             />
             <span>Obligatoire</span>
           </label>
-          {element.options.length > 0 ? (
+          {usesOptions(element.questionType) ? (
             <OptionsEditor
               options={element.options}
               onChange={(options) => onChange(pageId, element.id, { options })}
@@ -182,28 +218,79 @@ function OptionsEditor({
   readonly options: readonly QuestionOption[];
   readonly onChange: (options: readonly QuestionOption[]) => void;
 }): React.ReactElement {
-  function updateOption(index: number, patch: Partial<QuestionOption>): void {
-    onChange(options.map((option, optionIndex) => optionIndex === index ? { ...option, ...patch } : option));
+  const [labels, setLabels] = useState(() => labelsFromOptions(options));
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const pendingFocusIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    const nextLabels = labelsFromOptions(options);
+    setLabels((currentLabels) => {
+      if (sameLabels(compactLabels(currentLabels), nextLabels)) {
+        return currentLabels;
+      }
+      return nextLabels.length > 0 ? nextLabels : [""];
+    });
+  }, [options]);
+
+  useEffect(() => {
+    const focusIndex = pendingFocusIndex.current;
+    if (focusIndex === null) {
+      return;
+    }
+    pendingFocusIndex.current = null;
+    inputRefs.current[focusIndex]?.focus();
+  }, [labels]);
+
+  function emit(nextLabels: readonly string[]): void {
+    onChange(compactLabels(nextLabels).map((label) => ({ value: label, label })));
   }
 
   function addOption(): void {
-    const nextIndex = options.length + 1;
-    onChange([...options, { value: `option_${nextIndex}`, label: `Option ${nextIndex}` }]);
+    const nextLabels = [...labels, ""];
+    setLabels(nextLabels);
+    pendingFocusIndex.current = nextLabels.length - 1;
   }
 
   function removeOption(index: number): void {
-    onChange(options.filter((_, optionIndex) => optionIndex !== index));
+    const nextLabels = labels.filter((_, optionIndex) => optionIndex !== index);
+    const normalizedLabels = nextLabels.length > 0 ? nextLabels : [""];
+    setLabels(normalizedLabels);
+    emit(normalizedLabels);
   }
 
   function moveOption(index: number, direction: -1 | 1): void {
     const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= options.length) {
+    if (nextIndex < 0 || nextIndex >= labels.length) {
       return;
     }
-    const nextOptions = [...options];
-    const [option] = nextOptions.splice(index, 1);
-    nextOptions.splice(nextIndex, 0, option);
-    onChange(nextOptions);
+    const nextLabels = [...labels];
+    const [label] = nextLabels.splice(index, 1);
+    nextLabels.splice(nextIndex, 0, label ?? "");
+    setLabels(nextLabels);
+    emit(nextLabels);
+    pendingFocusIndex.current = nextIndex;
+  }
+
+  function updateLabel(index: number, label: string): void {
+    const nextLabels = labels.map((currentLabel, optionIndex) => optionIndex === index ? label : currentLabel);
+    setLabels(nextLabels);
+    emit(nextLabels);
+  }
+
+  function handleKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>): void {
+    if (event.key !== "Tab" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextLabels = [...labels];
+    if (nextLabels[index]?.trim()) {
+      nextLabels.splice(index + 1, 0, "");
+      setLabels(nextLabels);
+      pendingFocusIndex.current = index + 1;
+    } else {
+      pendingFocusIndex.current = Math.min(index + 1, nextLabels.length - 1);
+    }
   }
 
   return (
@@ -214,22 +301,22 @@ function OptionsEditor({
           Ajouter
         </button>
       </div>
-      {options.map((option, index) => (
-        <div key={`${option.value}-${index}`} className="qf-option-row">
+      {labels.map((label, index) => (
+        <div key={index} className="qf-option-row">
           <input
-            aria-label="Valeur"
-            value={option.value}
-            onChange={(event) => updateOption(index, { value: event.currentTarget.value })}
-          />
-          <input
-            aria-label="Libelle"
-            value={option.label}
-            onChange={(event) => updateOption(index, { label: event.currentTarget.value })}
+            ref={(input) => {
+              inputRefs.current[index] = input;
+            }}
+            aria-label={`Option ${index + 1}`}
+            value={label}
+            placeholder="Libelle de l'option"
+            onChange={(event) => updateLabel(index, event.currentTarget.value)}
+            onKeyDown={(event) => handleKeyDown(index, event)}
           />
           <button type="button" title="Monter" disabled={index === 0} onClick={() => moveOption(index, -1)}>
             ↑
           </button>
-          <button type="button" title="Descendre" disabled={index >= options.length - 1} onClick={() => moveOption(index, 1)}>
+          <button type="button" title="Descendre" disabled={index >= labels.length - 1} onClick={() => moveOption(index, 1)}>
             ↓
           </button>
           <button type="button" title="Supprimer" onClick={() => removeOption(index)}>
@@ -239,6 +326,23 @@ function OptionsEditor({
       ))}
     </div>
   );
+}
+
+function labelsFromOptions(options: readonly QuestionOption[]): string[] {
+  const labels = options.map((option) => option.label.trim()).filter(Boolean);
+  return labels.length > 0 ? labels : [""];
+}
+
+function compactLabels(labels: readonly string[]): string[] {
+  return labels.map((label) => label.trim()).filter(Boolean);
+}
+
+function sameLabels(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((label, index) => label === right[index]);
+}
+
+function usesOptions(questionType: string): boolean {
+  return questionType === "single-choice" || questionType === "multiple-choice" || questionType === "dropdown";
 }
 
 function QuestionSpecificFields({

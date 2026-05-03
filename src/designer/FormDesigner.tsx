@@ -149,6 +149,26 @@ export function FormDesigner({
     return () => window.removeEventListener("click", closeMenu);
   }, [openModeMenu]);
 
+  useEffect(() => {
+    if (viewMode !== "form" || currentSelection.kind !== "element") {
+      return;
+    }
+
+    function clearElementSelection(event: PointerEvent): void {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) {
+        return;
+      }
+      if (target.closest(".qf-element-block") || target.closest("[data-qf-inspector='true']")) {
+        return;
+      }
+      updateSelection({ kind: "form" });
+    }
+
+    document.addEventListener("pointerdown", clearElementSelection, true);
+    return () => document.removeEventListener("pointerdown", clearElementSelection, true);
+  }, [currentSelection.kind, viewMode]);
+
   function applySource(nextSource: FormSource, reason: FormSourceChangeReason): void {
     if (!source) {
       setInternalSource(nextSource);
@@ -355,6 +375,7 @@ export function FormDesigner({
           <aside className="qf-designer-sidebar">
             <FormInspector
               form={form}
+              runtime={runtime}
               selection={currentSelection}
               onUpdateForm={(patch) =>
                 applySource(updateFormMetadataSource(currentSource, patch), "inspector-edit")

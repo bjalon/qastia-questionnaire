@@ -29,6 +29,25 @@ pages:
 `,
 };
 
+const choiceSource: FormSource = {
+  content: `version: 1
+kind: form
+metadata:
+  title: "Test"
+pages:
+  - id: page_1
+    title: "Page 1"
+    elements:
+      - id: colors
+        type: question
+        questionType: multiple-choice
+        title: "Couleurs"
+        required: false
+        options:
+          - Rouge
+`,
+};
+
 describe("FormRunner", () => {
   it("focuses the first invalid control and exposes accessible validation state", async () => {
     const result = compileForm(source);
@@ -150,5 +169,70 @@ describe("FormDesigner", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Annuler" }));
     expect(screen.getByLabelText("Titre de la question")).toHaveValue("Nom");
+  });
+
+  it("keeps the selected question while using the inspector and clears it outside", () => {
+    render(
+      <FormDesigner
+        source={source}
+        runtime={defaultFormRuntime}
+        storage={false}
+      />,
+    );
+
+    const questionBlock = screen.getByText("Nom").closest(".qf-element-block");
+    if (!questionBlock) {
+      throw new Error("Expected question block");
+    }
+    fireEvent.click(questionBlock);
+    expect(screen.getByLabelText("Titre de la question")).toBeInTheDocument();
+
+    const inspector = screen.getByRole("heading", { name: "Inspector" }).closest("[data-qf-inspector='true']");
+    if (!inspector) {
+      throw new Error("Expected inspector");
+    }
+    fireEvent.pointerDown(inspector);
+    expect(screen.getByLabelText("Titre de la question")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByLabelText("Titre de la question")).not.toBeInTheDocument();
+  });
+
+  it("edits the question type and choice labels from the inspector", () => {
+    const onSourceChange = vi.fn();
+
+    render(
+      <FormDesigner
+        source={choiceSource}
+        runtime={defaultFormRuntime}
+        storage={false}
+        onSourceChange={onSourceChange}
+      />,
+    );
+
+    const questionBlock = screen.getByText("Couleurs").closest(".qf-element-block");
+    if (!questionBlock) {
+      throw new Error("Expected question block");
+    }
+    fireEvent.click(questionBlock);
+
+    fireEvent.change(screen.getByLabelText("Type"), {
+      target: { value: "single-choice" },
+    });
+    expect((onSourceChange.mock.calls.at(-1)?.[0].source as FormSource).content).toContain("questionType: single-choice");
+
+    fireEvent.change(screen.getByLabelText("Option 1"), {
+      target: { value: "Rouge vif" },
+    });
+    fireEvent.keyDown(screen.getByLabelText("Option 1"), { key: "Tab" });
+    fireEvent.change(screen.getByLabelText("Option 2"), {
+      target: { value: "Bleu" },
+    });
+
+    const content = (onSourceChange.mock.calls.at(-1)?.[0].source as FormSource).content;
+    expect(content).toContain("- Rouge vif");
+    expect(content).toContain("- Bleu");
+    expect(content).not.toContain("value:");
+    expect(content).not.toContain("label:");
   });
 });

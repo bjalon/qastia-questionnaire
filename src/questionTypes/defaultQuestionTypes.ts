@@ -111,8 +111,8 @@ function createOptionsQuestionType(
       title: defaultTitle,
       required: false,
       options: [
-        { value: "option_1", label: "Option 1" },
-        { value: "option_2", label: "Option 2" },
+        { value: "Option 1", label: "Option 1" },
+        { value: "Option 2", label: "Option 2" },
       ],
     }),
     normalizeConfig: (config) => config,
@@ -392,12 +392,19 @@ export function normalizeOptions(value: unknown): readonly QuestionOption[] {
   }
 
   return value
-    .filter(isRecord)
     .map((option, index) => {
+      if (typeof option === "string") {
+        const label = option.trim();
+        return label.length > 0 ? { value: label, label } : null;
+      }
+      if (!isRecord(option)) {
+        return null;
+      }
       const value = typeof option.value === "string" ? option.value : `option_${index + 1}`;
       const label = typeof option.label === "string" ? option.label : value;
       return { value, label };
-    });
+    })
+    .filter((option): option is QuestionOption => option !== null);
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
