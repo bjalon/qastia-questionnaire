@@ -10,6 +10,7 @@ export function diagnostic(
     readonly pageId?: string;
     readonly elementId?: string;
     readonly hint?: string;
+    readonly related?: FormDiagnostic["related"];
   } = {},
 ): FormDiagnostic {
   return {
@@ -21,5 +22,6 @@ export function diagnostic(
     pageId: options.pageId,
     elementId: options.elementId,
     hint: options.hint,
+    related: options.related,
   };
 }

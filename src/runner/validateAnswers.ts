@@ -25,6 +25,16 @@ export function validateAnswers(
       if (error) {
         errors.push({ questionId: element.id, pageId: page.id, message: error });
       }
+
+      for (const validator of runtime.validators.values()) {
+        for (const diagnostic of validator.validate(element, answers)) {
+          errors.push({
+            questionId: diagnostic.elementId ?? element.id,
+            pageId: diagnostic.pageId ?? page.id,
+            message: diagnostic.message,
+          });
+        }
+      }
     }
   }
 

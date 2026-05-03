@@ -499,6 +499,97 @@ Strategies disponibles en cas de collision de registre :
 - `keep-first` : le premier element est conserve ;
 - `error` : une erreur est levee des qu'un doublon est detecte.
 
+### Type De Question Custom
+
+Un type de question custom est une definition pure. Elle ne depend pas de React : le compilateur l'utilise pour creer une question par defaut, normaliser la config, valider la config et valider/serialiser les reponses.
+
+Contrat de `QuestionTypeDefinition` :
+
+```ts
+type QuestionTypeDefinition = {
+  id: QuestionTypeId;
+  label: string;
+  description: string;
+  defaultTitle: string;
+  defaultConfig: Readonly<Record<string, unknown>>;
+  createDefaultQuestion: (id: string) => QuestionDraft;
+  normalizeConfig: (config: Readonly<Record<string, unknown>>) => Readonly<Record<string, unknown>>;
+  validateConfig: (question: CompiledQuestionElement) => readonly FormDiagnostic[];
+  validateAnswer: (question: CompiledQuestionElement, value: FormAnswerValue | undefined) => string | null;
+  serializeAnswer: (value: FormAnswerValue | undefined) => FormAnswerValue | undefined;
+};
+```
+
+Exemple complet :
+
+```ts
+import {
+  createFormRuntime,
+  type QuestionTypeDefinition,
+} from "@bjalon/form-runtime";
+
+const consentQuestion: QuestionTypeDefinition = {
+  id: "consent",
+  label: "Consentement",
+  description: "Case de consentement obligatoire.",
+  defaultTitle: "J'accepte",
+  defaultConfig: {},
+  createDefaultQuestion: (id) => ({
+    id,
+    type: "question",
+    questionType: "consent",
+    title: "J'accepte",
+    required: true,
+  }),
+  normalizeConfig: (config) => config,
+  validateConfig: () => [],
+  validateAnswer: (question, value) =>
+    question.required && value !== true ? "Le consentement est obligatoire." : null,
+  serializeAnswer: (value) => (value === true ? true : undefined),
+};
+
+export const runtime = createFormRuntime({
+  questionTypes: [consentQuestion],
+});
+```
+
+Une question custom est ensuite referencee dans le YAML par son `questionType` :
+
+```yaml
+pages:
+  - id: page_1
+    title: Consentement
+    elements:
+      - id: consent
+        type: question
+        questionType: consent
+        title: J'accepte les conditions
+        required: true
+```
+
+Les validateurs globaux du runtime sont executes en plus de la validation du type de question. Ils permettent d'ajouter une regle transversale sans modifier le YAML :
+
+```ts
+const runtime = createFormRuntime({
+  validators: [
+    {
+      id: "forbidden-answer",
+      validate: (question, answers) =>
+        question.id === "name" && answers.name === "demo"
+          ? [
+              {
+                code: "QUESTION_INVALID_CONFIG",
+                severity: "error",
+                message: "Cette valeur est reservee.",
+                elementId: question.id,
+              },
+            ]
+          : [],
+    },
+  ],
+});
+```
+
 ## Themes
 
 Les themes impactent uniquement le rendu du formulaire, pas l'application hote. Les presets actuels sont declares dans le runtime par defaut et appliques par variables CSS.

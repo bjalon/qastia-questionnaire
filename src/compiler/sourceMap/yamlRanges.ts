@@ -1,3 +1,11 @@
+import {
+  isMap,
+  isScalar,
+  isSeq,
+  parseDocument,
+  type ParsedNode,
+  type Range,
+} from "yaml";
 import type { SourceRange } from "../../publicTypes";
 import { rangeFromOffsets } from "../sourceRanges";
 
@@ -12,6 +20,11 @@ type SourceLine = {
 export function rangeForPath(source: string, path: readonly string[]): SourceRange | undefined {
   if (path.length === 0) {
     return rangeFromOffsets(source, 0, Math.min(source.length, firstLineLength(source)));
+  }
+
+  const parsedRange = rangeForParsedPath(source, path);
+  if (parsedRange) {
+    return parsedRange;
   }
 
   const lines = source
@@ -31,6 +44,63 @@ export function rangeForPath(source: string, path: readonly string[]): SourceRan
   }
 
   return rangeForLineToken(source, match.line, match.token);
+}
+
+function rangeForParsedPath(source: string, path: readonly string[]): SourceRange | undefined {
+  try {
+    const document = parseDocument(source, { keepSourceTokens: true, prettyErrors: false });
+    if (document.errors.length > 0 || !document.contents) {
+      return undefined;
+    }
+
+    const range = findParsedRange(document.contents, path);
+    return range ? sourceRangeFromYamlRange(source, range) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function findParsedRange(node: ParsedNode, path: readonly string[]): Range | undefined {
+  const [head, ...tail] = path;
+  if (head === undefined) {
+    return node.range ?? undefined;
+  }
+
+  if (isSeq(node) && isArrayIndex(head)) {
+    const item = node.items[Number(head)];
+    if (!item || !isParsedNode(item)) {
+      return undefined;
+    }
+    return tail.length === 0 ? item.range ?? undefined : findParsedRange(item, tail);
+  }
+
+  if (!isMap(node)) {
+    return undefined;
+  }
+
+  const pair = node.items.find((item) => isScalar(item.key) && String(item.key.value) === head);
+  if (!pair || !isParsedNode(pair.key)) {
+    return undefined;
+  }
+
+  if (tail.length === 0) {
+    return pair.key.range ?? undefined;
+  }
+
+  return pair.value && isParsedNode(pair.value) ? findParsedRange(pair.value, tail) : undefined;
+}
+
+function sourceRangeFromYamlRange(source: string, range: Range): SourceRange | undefined {
+  const [start, valueEnd] = range;
+  if (typeof start !== "number" || typeof valueEnd !== "number") {
+    return undefined;
+  }
+
+  return rangeFromOffsets(source, start, Math.max(start, valueEnd));
+}
+
+function isParsedNode(value: unknown): value is ParsedNode {
+  return Boolean(value && typeof value === "object" && "range" in value);
 }
 
 function findPath(

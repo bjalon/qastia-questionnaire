@@ -1,4 +1,5 @@
 import { parseDocument } from "yaml";
+import type { ZodIssue } from "zod";
 import type {
   CompileFormOptions,
   CompileFormResult,
@@ -86,7 +87,7 @@ export function compileForm(
   if (!schemaResult.success) {
     diagnostics.push(
       ...schemaResult.error.issues.map((issue) =>
-        diagnostic("SCHEMA_INVALID_VALUE", issue.message, {
+        diagnostic("SCHEMA_INVALID_VALUE", schemaIssueMessage(issue), {
           path: issue.path.map(String),
           range: rangeForPath(source.content, issue.path.map(String)),
           severity: mode === "strict" ? "error" : "warning",
@@ -212,7 +213,7 @@ function compilePages(
       : [];
   }
 
-  const seenPageIds = new Set<string>();
+  const seenPageIds = new Map<string, { readonly index: number; readonly range?: FormDiagnostic["range"] }>();
   return rawPages
     .filter((page): page is Readonly<Record<string, unknown>> => isRecord(page))
     .map((page, pageIndex) => {
@@ -229,17 +230,29 @@ function compilePages(
         );
       }
 
-      if (seenPageIds.has(id)) {
+      const firstPage = seenPageIds.get(id);
+      if (firstPage) {
         diagnostics.push(
           diagnostic("PAGE_DUPLICATE_ID", `L'id de page "${id}" est duplique.`, {
             path: ["pages", String(pageIndex), "id"],
             range: rangeForPath(source, ["pages", String(pageIndex), "id"]),
             pageId: id,
             hint: "Les ids de pages doivent etre uniques dans tout le formulaire.",
+            related: [
+              {
+                message: `Premiere declaration de "${id}" sur la page ${firstPage.index + 1}.`,
+                range: firstPage.range,
+              },
+            ],
           }),
         );
       }
-      seenPageIds.add(id);
+      if (!firstPage) {
+        seenPageIds.set(id, {
+          index: pageIndex,
+          range: rangeForPath(source, ["pages", String(pageIndex), "id"]),
+        });
+      }
 
       const elements = compileElements(page.elements, runtime, diagnostics, source, id, pageIndex, mode);
       if (elements.length === 0) {
@@ -284,7 +297,7 @@ function compileElements(
     return [];
   }
 
-  const seenElementIds = new Set<string>();
+  const seenElementIds = new Map<string, { readonly index: number; readonly range?: FormDiagnostic["range"] }>();
   const compiled: CompiledFormElement[] = [];
 
   rawElements.forEach((element, elementIndex) => {
@@ -322,7 +335,8 @@ function compileElements(
       );
     }
 
-    if (seenElementIds.has(id)) {
+    const firstElement = seenElementIds.get(id);
+    if (firstElement) {
       diagnostics.push(
         diagnostic("ELEMENT_DUPLICATE_ID", `L'id d'element "${id}" est duplique dans la page.`, {
           path: ["pages", String(pageIndex), "elements", String(elementIndex), "id"],
@@ -330,10 +344,21 @@ function compileElements(
           pageId,
           elementId: id,
           hint: "Les ids d'elements doivent etre uniques dans une page.",
+          related: [
+            {
+              message: `Premiere declaration de "${id}" dans l'element ${firstElement.index + 1}.`,
+              range: firstElement.range,
+            },
+          ],
         }),
       );
     }
-    seenElementIds.add(id);
+    if (!firstElement) {
+      seenElementIds.set(id, {
+        index: elementIndex,
+        range: rangeForPath(source, ["pages", String(pageIndex), "elements", String(elementIndex), "id"]),
+      });
+    }
 
     const type = typeof element.type === "string" ? element.type : "question";
     if (type === "statement") {
@@ -495,6 +520,21 @@ function unknownFieldDiagnostics(
         hint: "Supprimez ce champ ou ajoutez son support au schema public.",
       }),
     );
+}
+
+function schemaIssueMessage(issue: ZodIssue): string {
+  const label = issue.path.length > 0 ? `Le champ ${issue.path.join(".")}` : "La source YAML";
+
+  switch (issue.code) {
+    case "invalid_type":
+      return `${label} a un type invalide : valeur attendue ${issue.expected}, valeur recue ${issue.received}.`;
+    case "invalid_enum_value":
+      return `${label} doit utiliser une des valeurs autorisees : ${issue.options.join(", ")}.`;
+    case "unrecognized_keys":
+      return `${label} contient des champs inconnus : ${issue.keys.join(", ")}.`;
+    default:
+      return `${label} est invalide.`;
+  }
 }
 
 function stringOr(value: unknown, fallback: string): string {

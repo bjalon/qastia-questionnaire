@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildSubmitPayload,
   compileForm,
+  createFormRuntime,
   defaultFormRuntime,
   LocalStorageFormDesignerPersistenceAdapter,
   validateAndBuildSubmitPayload,
   validateAnswers,
   type FormSource,
+  type QuestionTypeDefinition,
 } from "../src";
 import { rangeForPath } from "../src/compiler";
 import {
@@ -79,6 +81,27 @@ describe("compileForm", () => {
     expect(result.status).toBe("invalid");
     expect(result.diagnostics[0]?.code).toBe("YAML_SYNTAX_ERROR");
   });
+
+  it("adds related diagnostics for duplicate ids", () => {
+    const result = compileForm({
+      content: validSource.content.replace("id: score", "id: name"),
+    });
+
+    const duplicate = result.diagnostics.find((diagnostic) => diagnostic.code === "ELEMENT_DUPLICATE_ID");
+    expect(duplicate?.related?.[0]?.message).toContain('Premiere declaration de "name"');
+    expect(duplicate?.related?.[0]?.range?.start.line).toBe(9);
+  });
+
+  it("returns French schema diagnostics", () => {
+    const result = compileForm({
+      content: validSource.content.replace("required: true", "required: oui"),
+    });
+
+    const schemaDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.code === "SCHEMA_INVALID_VALUE");
+    expect(schemaDiagnostic?.message).toContain("a un type invalide");
+    expect(schemaDiagnostic?.message).toContain("valeur attendue");
+    expect(schemaDiagnostic?.range?.start.line).toBe(13);
+  });
 });
 
 describe("source map", () => {
@@ -87,6 +110,129 @@ describe("source map", () => {
 
     expect(range?.start.line).toBe(16);
     expect(range?.start.column).toBe(9);
+  });
+
+  it("locates inline YAML collections", () => {
+    const source = "pages: [{ id: page_1, elements: [{ id: q1, title: Hello }] }]\n";
+    const range = rangeForPath(source, ["pages", "0", "elements", "0", "title"]);
+
+    expect(range?.start.line).toBe(1);
+    expect(range?.start.column).toBe(44);
+  });
+
+  it("locates paths around comments, anchors and multiline values", () => {
+    const source = `# commentaire
+metadata:
+  title: &title |
+    Ligne 1
+    Ligne 2
+pages:
+  - id: page_1
+    title: *title
+    elements: []
+`;
+
+    expect(rangeForPath(source, ["metadata", "title"])?.start.line).toBe(3);
+    expect(rangeForPath(source, ["pages", "0", "title"])?.start.line).toBe(8);
+  });
+});
+
+describe("runtime registries", () => {
+  const baseTextQuestion = defaultFormRuntime.questionTypes.get("short-text");
+
+  it("throws on registry collisions by default", () => {
+    if (!baseTextQuestion) {
+      throw new Error("Expected default question type");
+    }
+
+    expect(() => createFormRuntime({ questionTypes: [baseTextQuestion] })).toThrow("Duplicate question type id");
+  });
+
+  it("supports override and keep-first collision strategies", () => {
+    if (!baseTextQuestion) {
+      throw new Error("Expected default question type");
+    }
+
+    const overriddenRuntime = createFormRuntime({
+      questionTypes: [{ ...baseTextQuestion, label: "Texte remplace" }],
+      collisionStrategy: "override",
+    });
+    const keptRuntime = createFormRuntime({
+      questionTypes: [{ ...baseTextQuestion, label: "Texte remplace" }],
+      collisionStrategy: "keep-first",
+    });
+
+    expect(overriddenRuntime.questionTypes.get("short-text")?.label).toBe("Texte remplace");
+    expect(keptRuntime.questionTypes.get("short-text")?.label).toBe(baseTextQuestion.label);
+  });
+
+  it("compiles a custom question type", () => {
+    const consentQuestion: QuestionTypeDefinition = {
+      id: "consent",
+      label: "Consentement",
+      description: "Case de consentement applicative.",
+      defaultTitle: "J'accepte",
+      defaultConfig: {},
+      createDefaultQuestion: (id) => ({
+        id,
+        type: "question",
+        questionType: "consent",
+        title: "J'accepte",
+        required: true,
+      }),
+      normalizeConfig: (config) => config,
+      validateConfig: () => [],
+      validateAnswer: (question, value) => (question.required && value !== true ? "Le consentement est obligatoire." : null),
+      serializeAnswer: (value) => (value === true ? true : undefined),
+    };
+
+    const runtime = createFormRuntime({ questionTypes: [consentQuestion] });
+    const result = compileForm(
+      {
+        content: validSource.content.replace("questionType: short-text", "questionType: consent"),
+      },
+      runtime,
+    );
+
+    expect(result.status).toBe("valid");
+    if (result.status === "invalid") {
+      throw new Error("Expected custom question to compile");
+    }
+    expect(result.form.pages[0]?.elements[0]?.type === "question"
+      ? result.form.pages[0]?.elements[0]?.questionType
+      : undefined).toBe("consent");
+  });
+
+  it("runs global validators during submission validation", () => {
+    const result = compileForm(validSource);
+    if (result.status === "invalid") {
+      throw new Error("Expected compilable form");
+    }
+
+    const runtime = createFormRuntime({
+      validators: [
+        {
+          id: "forbidden-demo-answer",
+          validate: (question, answers) =>
+            question.id === "name" && answers.name === "demo"
+              ? [
+                  {
+                    code: "QUESTION_INVALID_CONFIG",
+                    severity: "error",
+                    message: "Cette valeur est reservee.",
+                    elementId: question.id,
+                  },
+                ]
+              : [],
+        },
+      ],
+    });
+
+    expect(validateAnswers(result.form, { name: "demo" }, runtime)).toContainEqual({
+      questionId: "name",
+      pageId: "page_1",
+      message: "Cette valeur est reservee.",
+    });
   });
 });
 

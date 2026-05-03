@@ -26,8 +26,8 @@ Le reste a faire concerne surtout la robustesse, l'ergonomie, la couverture de t
 ```txt
 Lot 0  — Initialisation projet librairie                   FAIT
 Lot 1  — Domaine public et modele YAML V1                  FAIT
-Lot 2  — Compilateur YAML avec diagnostics                 FAIT, a durcir
-Lot 3  — Runtime registries                                FAIT, a documenter pour custom types
+Lot 2  — Compilateur YAML avec diagnostics                 FAIT, durci
+Lot 3  — Runtime registries                                FAIT, documente
 Lot 4  — Types de questions V1                             FAIT, editors a enrichir
 Lot 5  — FormRunner participant                            FAIT, UX validation a affiner
 Lot 6  — JSON de reponses et validation de soumission      FAIT
@@ -98,7 +98,7 @@ Reste a faire :
 
 ### Lot 2 — Compilateur YAML avec diagnostics
 
-Etat : **fait, a durcir**.
+Etat : **fait, durci**.
 
 Livre :
 
@@ -107,22 +107,23 @@ Livre :
 - validation Zod ;
 - diagnostics avec `code`, `severity`, `path`, `range`, `hint`, `pageId`, `elementId` ;
 - `mode: "authoring" | "strict"` ;
-- source map YAML basique via `rangeForPath` ;
-- strict mode bloquant sur champs inconnus, theme inconnu, navigation invalide.
+- source map YAML via `rangeForPath`, basee sur les noeuds du parseur avec fallback indentation ;
+- strict mode bloquant sur champs inconnus, theme inconnu, navigation invalide ;
+- diagnostics de doublons avec `related` vers la premiere occurrence ;
+- messages de validation schema francises ;
+- tests de localisation pour chemins imbriques, collections inline, commentaires, anchors et valeurs multilignes.
 
 Reste a faire :
 
-- completer la source map YAML pour les cas complexes : tableaux inline, commentaires, anchors, YAML multiline ;
-- ajouter des tests de localisation pour chaque diagnostic critique ;
-- ajouter diagnostics `related` pour doublons avec reference de l'element original ;
-- verifier que toutes les erreurs Zod ont un message utilisateur comprehensible en francais ;
-- decider si `sourceHash` reste `fnv1a` ou passe en `sha256` avant V1.
+- completer la source map YAML seulement si un cas reel apparait en edition : tags custom, merge keys, aliases complexes ;
+- ajouter tests de localisation sur les prochains diagnostics ajoutes ;
+- conserver `sourceHash` en `fnv1a` pour V1 afin de garder un calcul synchrone cote navigateur.
 
 ---
 
 ### Lot 3 — Runtime registries
 
-Etat : **fait**.
+Etat : **fait, documente**.
 
 Livre :
 
@@ -131,14 +132,17 @@ Livre :
 - `QuestionTypeRegistry` ;
 - `ThemeRegistry` ;
 - `ValidatorRegistry` ;
-- strategie de collision : `error`, `override`, `keep-first`.
+- strategie de collision : `error`, `override`, `keep-first` ;
+- tests des collisions de registres ;
+- exemple complet de question custom dans le README ;
+- contrat `QuestionTypeDefinition` documente ;
+- validateurs globaux executes pendant la validation de soumission.
 
 Reste a faire :
 
-- ajouter un exemple complet de question custom dans README ou `examples/custom-question`;
-- clarifier le contrat exact de `QuestionTypeDefinition`;
-- ajouter tests de collisions sur registres ;
-- brancher des validateurs globaux `runtime.validators` dans la validation de soumission si besoin applicatif.
+- ajouter un renderer React custom documente quand l'API de rendu par type sera exposee ;
+- ajouter un exemple `examples/custom-question` si le README devient insuffisant ;
+- documenter les conventions de versionnement des types custom utilises par `qastia-coaching`.
 
 ---
 
