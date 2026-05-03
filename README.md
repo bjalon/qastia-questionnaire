@@ -539,3 +539,4 @@ Les documents de reference sont dans `documents/` :
 
 - `spec-qastia-form-runtime.md` : specification technique et principes d'architecture ;
 - `lots-implementation-qastia-form-runtime.md` : decoupage par lots d'implementation.
+- `evolutions-post-v1.md` : evolutions volontairement gardees hors du socle V1.

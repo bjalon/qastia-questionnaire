@@ -9,6 +9,7 @@ import type {
   FormSubmitEvent,
 } from "../publicTypes";
 import { defaultFormRuntime } from "../runtime/defaultFormRuntime";
+import { formThemeStyle } from "../runtime/themeStyle";
 import { validateAndBuildSubmitPayload } from "./buildSubmitPayload";
 import { FormNavigation } from "./FormNavigation";
 import { FormPageRenderer } from "./FormPageRenderer";
@@ -77,7 +78,7 @@ export function FormRunner({
   }
 
   return (
-    <form className="qf-runner" data-view-mode={viewMode} onSubmit={submit}>
+    <form className="qf-runner" data-view-mode={viewMode} style={formThemeStyle(form, runtime)} onSubmit={submit}>
       <header className="qf-form-header">
         <p>{form.metadata.locale ?? "fr-FR"}</p>
         <h1>{form.metadata.title}</h1>

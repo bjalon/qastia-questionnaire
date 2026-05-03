@@ -17,7 +17,8 @@ export type FormSourceChangeReason =
   | "yaml-edit"
   | "palette-add-question"
   | "palette-add-page"
-  | "inspector-edit";
+  | "inspector-edit"
+  | "version-restore";
 
 export type FormSourceChangeEvent = {
   readonly source: FormSource;

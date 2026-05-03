@@ -15,6 +15,8 @@ import { DesignerCanvas } from "./canvas/DesignerCanvas";
 import { defaultDesignerOptions } from "./defaultDesignerOptions";
 import { FormInspector } from "./inspector/FormInspector";
 import { QuestionPalette } from "./palette/QuestionPalette";
+import { FormYamlEditor } from "./sourceMode/FormYamlEditor";
+import { VersionHistoryPanel } from "./versions/VersionHistoryPanel";
 import {
   addPageSource,
   addQuestionSource,
@@ -60,6 +62,7 @@ export function FormDesigner({
   const [draftTitle, setDraftTitle] = useState("");
   const [openModeMenu, setOpenModeMenu] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(source !== undefined || storage === false);
+  const [recoveredAt, setRecoveredAt] = useState<string | null>(null);
   const resolvedOptions = { ...defaultDesignerOptions, ...options };
   const currentSource = source ?? internalSource;
   const compileResult = useMemo(
@@ -84,6 +87,7 @@ export function FormDesigner({
       }
       if (snapshot) {
         setInternalSource(snapshot.source);
+        setRecoveredAt(snapshot.updatedAt);
       }
       setStorageLoaded(true);
     });
@@ -112,6 +116,10 @@ export function FormDesigner({
     }
     persistDraft(nextSource, storage, resolvedStorageKey(storageKey, nextSource, form));
     onSourceChange?.({ source: nextSource, reason });
+  }
+
+  function restoreVersion(nextSource: FormSource): void {
+    applySource(nextSource, "version-restore");
   }
 
   function addQuestion(questionTypeId: string): void {
@@ -218,14 +226,20 @@ export function FormDesigner({
         </ul>
       ) : null}
 
+      {recoveredAt ? (
+        <div className="qf-recovery-notice">
+          <span>Brouillon restaure du {new Date(recoveredAt).toLocaleString("fr-FR")}.</span>
+          <button type="button" onClick={() => setRecoveredAt(null)}>
+            Fermer
+          </button>
+        </div>
+      ) : null}
+
       {viewMode === "yaml" ? (
-        <textarea
-          className="qf-yaml-editor"
-          spellCheck={false}
-          value={currentSource.content}
-          onChange={(event) =>
-            applySource({ ...currentSource, content: event.currentTarget.value }, "yaml-edit")
-          }
+        <FormYamlEditor
+          source={currentSource}
+          diagnostics={compileResult.diagnostics}
+          onSourceChange={(nextSource) => applySource(nextSource, "yaml-edit")}
         />
       ) : null}
 
@@ -261,6 +275,14 @@ export function FormDesigner({
                 applySource(updateElementSource(currentSource, pageId, elementId, patch), "inspector-edit")
               }
             />
+            {storage ? (
+              <VersionHistoryPanel
+                storage={storage}
+                storageKey={resolvedStorageKey(storageKey, currentSource, form)}
+                source={currentSource}
+                onRestore={restoreVersion}
+              />
+            ) : null}
           </aside>
         </div>
       ) : null}

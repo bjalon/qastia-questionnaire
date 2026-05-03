@@ -1,6 +1,7 @@
 import type {
   FormDesignerDraftSnapshot,
   FormDesignerPersistenceAdapter,
+  FormDesignerVersionSnapshot,
 } from "../domain/Storage";
 
 export type FormDesignerStorageLike = {
@@ -54,9 +55,56 @@ export class LocalStorageFormDesignerPersistenceAdapter implements FormDesignerP
     this.storage?.removeItem(this.storageKey(key));
   }
 
+  async listVersions(key: string): Promise<readonly FormDesignerVersionSnapshot[]> {
+    const storedValue = this.storage?.getItem(this.versionsKey(key));
+    if (!storedValue) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(storedValue) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed.filter(isVersionSnapshot).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    } catch {
+      return [];
+    }
+  }
+
+  async saveVersion(snapshot: FormDesignerVersionSnapshot): Promise<void> {
+    const versions = (await this.listVersions(snapshot.key)).filter((version) => version.id !== snapshot.id);
+    this.storage?.setItem(this.versionsKey(snapshot.key), JSON.stringify([snapshot, ...versions].slice(0, 40)));
+  }
+
+  async deleteVersion(key: string, versionId: string): Promise<void> {
+    const versions = (await this.listVersions(key)).filter((version) => version.id !== versionId);
+    this.storage?.setItem(this.versionsKey(key), JSON.stringify(versions));
+  }
+
   private storageKey(key: string): string {
     return `${this.namespace}:${key}`;
   }
+
+  private versionsKey(key: string): string {
+    return `${this.namespace}:versions:${key}`;
+  }
+}
+
+function isVersionSnapshot(value: unknown): value is FormDesignerVersionSnapshot {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Partial<FormDesignerVersionSnapshot>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.key === "string" &&
+    typeof record.createdAt === "string" &&
+    typeof record.label === "string" &&
+    record.apiVersion === 1 &&
+    typeof record.source?.content === "string"
+  );
 }
 
 function resolveBrowserStorage(): FormDesignerStorageLike | null {

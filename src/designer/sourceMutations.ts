@@ -55,6 +55,8 @@ export function updateElementSource(
     readonly description?: string;
     readonly required?: boolean;
     readonly options?: readonly QuestionOption[];
+    readonly config?: Readonly<Record<string, unknown>>;
+    readonly validation?: Readonly<Record<string, unknown>>;
   },
 ): FormSource {
   return updateYamlSource(source, (form) => {
@@ -72,6 +74,12 @@ export function updateElementSource(
         value: option.value,
         label: option.label,
       }));
+    }
+    if (patch.config !== undefined) {
+      element.config = compactRecord(patch.config);
+    }
+    if (patch.validation !== undefined) {
+      element.validation = compactRecord(patch.validation);
     }
   });
 }
@@ -282,6 +290,12 @@ function applyStringPatch(record: MutableRecord, key: string, value: string | un
   }
 
   record[key] = value;
+}
+
+function compactRecord(record: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([, value]) => value !== undefined && value !== ""),
+  );
 }
 
 function isRecord(value: unknown): value is MutableRecord {

@@ -57,7 +57,8 @@
     "build:example": "vite build --config vite.example.config.ts",
     "dev:example": "vite --config vite.example.config.ts --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:package": "npm run build && node tests/package-smoke.mjs"
   },
   "peerDependencies": {
     "react": ">=18",

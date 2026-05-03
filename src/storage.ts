@@ -6,4 +6,5 @@ export type {
 export type {
   FormDesignerDraftSnapshot,
   FormDesignerPersistenceAdapter,
+  FormDesignerVersionSnapshot,
 } from "./storage/FormDesignerPersistenceAdapter";

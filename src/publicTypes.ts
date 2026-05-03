@@ -54,6 +54,7 @@ export type {
 export type {
   FormDesignerDraftSnapshot,
   FormDesignerPersistenceAdapter,
+  FormDesignerVersionSnapshot,
 } from "./domain/Storage";
 export { FORM_RUNTIME_PUBLIC_API_VERSION } from "./domain/PublicApi";
 export type {
@@ -77,3 +78,5 @@ export type {
 export type { DesignerCanvasProps } from "./designer/canvas/DesignerCanvas";
 export type { FormInspectorProps } from "./designer/inspector/FormInspector";
 export type { QuestionPaletteProps } from "./designer/palette/QuestionPalette";
+export type { FormYamlEditorProps } from "./designer/sourceMode/FormYamlEditor";
+export type { VersionHistoryPanelProps } from "./designer/versions/VersionHistoryPanel";

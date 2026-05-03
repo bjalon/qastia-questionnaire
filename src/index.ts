@@ -8,10 +8,13 @@ export { FormDesigner } from "./designer/FormDesigner";
 export { defaultDesignerOptions } from "./designer/defaultDesignerOptions";
 export { FormInspector } from "./designer/inspector/FormInspector";
 export { QuestionPalette } from "./designer/palette/QuestionPalette";
+export { FormYamlEditor } from "./designer/sourceMode/FormYamlEditor";
+export { VersionHistoryPanel } from "./designer/versions/VersionHistoryPanel";
 export { FormPreview } from "./preview/FormPreview";
 export { createFormRuntime } from "./runtime/createFormRuntime";
 export { defaultFormRuntime } from "./runtime/defaultFormRuntime";
 export { defaultThemes } from "./runtime/defaultThemes";
+export { formThemeStyle } from "./runtime/themeStyle";
 export { LocalStorageFormDesignerPersistenceAdapter } from "./storage/LocalStorageFormDesignerPersistenceAdapter";
 export { FormRunner } from "./runner/FormRunner";
 export { buildSubmitPayload, validateAndBuildSubmitPayload } from "./runner/buildSubmitPayload";
@@ -41,6 +44,7 @@ export type {
   FormNavigationMode,
   FormRuntime,
   FormDesignerDraftSnapshot,
+  FormDesignerVersionSnapshot,
   FormDesignerOptions,
   FormDesignerPersistenceAdapter,
   FormDesignerProps,
@@ -48,6 +52,8 @@ export type {
   FormDesignerViewMode,
   DesignerCanvasProps,
   FormInspectorProps,
+  FormYamlEditorProps,
+  VersionHistoryPanelProps,
   FormPreviewProps,
   FormRunnerProps,
   FormRunnerSubmitState,

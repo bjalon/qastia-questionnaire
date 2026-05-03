@@ -2,6 +2,7 @@ import { Component, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   FormDesigner,
+  LocalStorageFormDesignerPersistenceAdapter,
   defaultFormRuntime,
   type FormSource,
 } from "../../../src";
@@ -128,6 +129,10 @@ pages:
 `,
 };
 
+const storage = new LocalStorageFormDesignerPersistenceAdapter({
+  namespace: "qastia-form-runtime:integrated-example",
+});
+
 function IntegratedExample(): React.ReactElement {
   const [source, setSource] = useState<FormSource>(initialSource);
 
@@ -137,6 +142,8 @@ function IntegratedExample(): React.ReactElement {
         <FormDesigner
           source={source}
           runtime={defaultFormRuntime}
+          storage={storage}
+          storageKey="coaching-intake"
           actions={
             <button type="button" onClick={() => setSource(initialSource)}>
               Réinitialiser
