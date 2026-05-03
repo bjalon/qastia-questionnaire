@@ -63,6 +63,7 @@ export type {
 } from "./domain/SourceRange";
 export type {
   FormRunnerProps,
+  FormRunnerLabels,
   FormRunnerSubmitState,
   FormRunnerViewMode,
 } from "./runner/FormRunner";

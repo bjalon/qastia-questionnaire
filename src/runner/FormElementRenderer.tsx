@@ -9,6 +9,7 @@ export type FormElementRendererProps = {
   readonly element: CompiledFormElement;
   readonly value: FormAnswerValue | undefined;
   readonly error?: string;
+  readonly disabled?: boolean;
   readonly onChange: (questionId: string, value: FormAnswerValue | undefined) => void;
 };
 
@@ -16,6 +17,7 @@ export function FormElementRenderer({
   element,
   value,
   error,
+  disabled = false,
   onChange,
 }: FormElementRendererProps): React.ReactElement {
   if (element.type === "statement") {
@@ -27,5 +29,5 @@ export function FormElementRenderer({
     );
   }
 
-  return <QuestionRenderer question={element} value={value} error={error} onChange={onChange} />;
+  return <QuestionRenderer question={element} value={value} error={error} disabled={disabled} onChange={onChange} />;
 }

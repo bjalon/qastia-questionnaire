@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { compileForm } from "../compiler/compileForm";
 import { defaultFormRuntime } from "../runtime/defaultFormRuntime";
@@ -20,8 +20,15 @@ import { VersionHistoryPanel } from "./versions/VersionHistoryPanel";
 import {
   addPageSource,
   addQuestionSource,
+  deleteElementSource,
+  deletePageSource,
+  duplicateElementSource,
+  duplicatePageSource,
+  moveElementSource,
+  movePageSource,
   updateElementSource,
   updateFormMetadataSource,
+  updateFormSettingsSource,
   updatePageSource,
 } from "./sourceMutations";
 import type {
@@ -67,6 +74,7 @@ export function FormDesigner({
   const [openModeMenu, setOpenModeMenu] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(source !== undefined || storage === false);
   const [recoveredAt, setRecoveredAt] = useState<string | null>(null);
+  const lastValidVersionHash = useRef<string | null>(null);
   const currentSource = source ?? internalSource;
   const currentSelection = selection ?? internalSelection;
   const compileResult = useMemo(
@@ -78,6 +86,27 @@ export function FormDesigner({
   useEffect(() => {
     onCompile?.(compileResult);
   }, [compileResult, onCompile]);
+
+  useEffect(() => {
+    if (!storage || !resolvedOptions.autoSaveValidVersions || compileResult.status !== "valid") {
+      return;
+    }
+
+    const hash = compileResult.form.sourceHash;
+    if (lastValidVersionHash.current === hash) {
+      return;
+    }
+    lastValidVersionHash.current = hash;
+
+    void storage.saveVersion({
+      id: `valid-${hash.replace(/[^a-z0-9]+/gi, "-")}`,
+      key: resolvedStorageKey(storageKey, currentSource, compileResult.form),
+      source: currentSource,
+      createdAt: new Date().toISOString(),
+      label: "Derniere version valide",
+      apiVersion: FORM_RUNTIME_PUBLIC_API_VERSION,
+    });
+  }, [compileResult, currentSource, resolvedOptions.autoSaveValidVersions, storage, storageKey]);
 
   useEffect(() => {
     if (!resolvedOptions.viewModes.includes(viewMode)) {
@@ -149,6 +178,42 @@ export function FormDesigner({
     const result = addPageSource(currentSource, currentSelection);
     updateSelection({ kind: "page", pageId: result.pageId });
     applySource(result.source, "palette-add-page");
+  }
+
+  function duplicatePage(pageId: string): void {
+    const result = duplicatePageSource(currentSource, pageId);
+    if (!result.pageId) {
+      return;
+    }
+    updateSelection({ kind: "page", pageId: result.pageId });
+    applySource(result.source, "canvas-duplicate");
+  }
+
+  function deletePage(pageId: string): void {
+    updateSelection({ kind: "form" });
+    applySource(deletePageSource(currentSource, pageId), "canvas-delete");
+  }
+
+  function movePage(pageId: string, direction: -1 | 1): void {
+    applySource(movePageSource(currentSource, pageId, direction), "canvas-reorder");
+  }
+
+  function duplicateElement(pageId: string, elementId: string): void {
+    const result = duplicateElementSource(currentSource, pageId, elementId);
+    if (!result.elementId) {
+      return;
+    }
+    updateSelection({ kind: "element", pageId, elementId: result.elementId });
+    applySource(result.source, "canvas-duplicate");
+  }
+
+  function deleteElement(pageId: string, elementId: string): void {
+    updateSelection({ kind: "page", pageId });
+    applySource(deleteElementSource(currentSource, pageId, elementId), "canvas-delete");
+  }
+
+  function moveElement(pageId: string, elementId: string, direction: -1 | 1): void {
+    applySource(moveElementSource(currentSource, pageId, elementId, direction), "canvas-reorder");
   }
 
   function startTitleEditing(): void {
@@ -276,6 +341,12 @@ export function FormDesigner({
             diagnostics={compileResult.diagnostics}
             selection={currentSelection}
             onSelectionChange={updateSelection}
+            onDuplicatePage={duplicatePage}
+            onDeletePage={deletePage}
+            onMovePage={movePage}
+            onDuplicateElement={duplicateElement}
+            onDeleteElement={deleteElement}
+            onMoveElement={moveElement}
           />
           <aside className="qf-designer-sidebar">
             <QuestionPalette runtime={runtime} onAddQuestion={addQuestion} onAddPage={addPage} />
@@ -284,6 +355,9 @@ export function FormDesigner({
               selection={currentSelection}
               onUpdateForm={(patch) =>
                 applySource(updateFormMetadataSource(currentSource, patch), "inspector-edit")
+              }
+              onUpdateFormSettings={(patch) =>
+                applySource(updateFormSettingsSource(currentSource, patch), "inspector-edit")
               }
               onUpdatePage={(pageId, patch) =>
                 applySource(updatePageSource(currentSource, pageId, patch), "inspector-edit")

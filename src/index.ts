@@ -56,6 +56,7 @@ export type {
   VersionHistoryPanelProps,
   FormPreviewProps,
   FormRunnerProps,
+  FormRunnerLabels,
   FormRunnerSubmitState,
   FormRunnerViewMode,
   FormSource,

@@ -12,6 +12,7 @@ export {
 } from "./runner/index";
 
 export type {
+  FormRunnerLabels,
   FormRunnerProps,
   FormRunnerSubmitState,
   FormRunnerViewMode,

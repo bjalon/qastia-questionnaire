@@ -8,6 +8,12 @@ export type DesignerCanvasProps = {
   readonly diagnostics: readonly FormDiagnostic[];
   readonly selection: FormDesignerSelection;
   readonly onSelectionChange: (selection: FormDesignerSelection) => void;
+  readonly onDuplicatePage: (pageId: string) => void;
+  readonly onDeletePage: (pageId: string) => void;
+  readonly onMovePage: (pageId: string, direction: -1 | 1) => void;
+  readonly onDuplicateElement: (pageId: string, elementId: string) => void;
+  readonly onDeleteElement: (pageId: string, elementId: string) => void;
+  readonly onMoveElement: (pageId: string, elementId: string, direction: -1 | 1) => void;
 };
 
 export function DesignerCanvas({
@@ -15,6 +21,12 @@ export function DesignerCanvas({
   diagnostics,
   selection,
   onSelectionChange,
+  onDuplicatePage,
+  onDeletePage,
+  onMovePage,
+  onDuplicateElement,
+  onDeleteElement,
+  onMoveElement,
 }: DesignerCanvasProps): React.ReactElement {
   if (!form) {
     return (
@@ -37,13 +49,21 @@ export function DesignerCanvas({
         {form.metadata.description ? <small>{form.metadata.description}</small> : null}
       </button>
       <div className="qf-page-list">
-        {form.pages.map((page) => (
+        {form.pages.map((page, pageIndex) => (
           <PageBlock
             key={page.id}
             page={page}
+            pageIndex={pageIndex}
+            pageCount={form.pages.length}
             diagnostics={diagnostics}
             selection={selection}
             onSelectionChange={onSelectionChange}
+            onDuplicatePage={onDuplicatePage}
+            onDeletePage={onDeletePage}
+            onMovePage={onMovePage}
+            onDuplicateElement={onDuplicateElement}
+            onDeleteElement={onDeleteElement}
+            onMoveElement={onMoveElement}
           />
         ))}
       </div>

@@ -10,6 +10,7 @@ export type FormPageRendererProps = {
   readonly page: CompiledFormPage;
   readonly answers: FormAnswers;
   readonly errors: ReadonlyMap<string, string>;
+  readonly disabled?: boolean;
   readonly onChange: (questionId: string, value: FormAnswerValue | undefined) => void;
 };
 
@@ -17,6 +18,7 @@ export function FormPageRenderer({
   page,
   answers,
   errors,
+  disabled = false,
   onChange,
 }: FormPageRendererProps): React.ReactElement {
   return (
@@ -32,6 +34,7 @@ export function FormPageRenderer({
             element={element}
             value={answers[element.id]}
             error={errors.get(element.id)}
+            disabled={disabled}
             onChange={onChange}
           />
         ))}

@@ -28,16 +28,16 @@ Lot 0  — Initialisation projet librairie                   FAIT
 Lot 1  — Domaine public et modele YAML V1                  FAIT
 Lot 2  — Compilateur YAML avec diagnostics                 FAIT, durci
 Lot 3  — Runtime registries                                FAIT, documente
-Lot 4  — Types de questions V1                             FAIT, editors a enrichir
-Lot 5  — FormRunner participant                            FAIT, UX validation a affiner
+Lot 4  — Types de questions V1                             FAIT, edition enrichie
+Lot 5  — FormRunner participant                            FAIT, UX validation durcie
 Lot 6  — JSON de reponses et validation de soumission      FAIT
 Lot 7  — FormPreview                                       FAIT
 Lot 8  — FormDesigner shell                                FAIT
-Lot 9  — Canvas designer pages/questions                   FAIT, actions avancees a ajouter
+Lot 9  — Canvas designer pages/questions                   FAIT, actions avancees ajoutees
 Lot 10 — Palette a droite et ajout d'elements              FAIT
-Lot 11 — Inspectors et edition des questions               FAIT, ergonomie options a ameliorer
+Lot 11 — Inspectors et edition des questions               FAIT, ergonomie options amelioree
 Lot 12 — Mode YAML avec diagnostics localises              FAIT, CodeMirror reste a integrer
-Lot 13 — Sauvegarde locale, versions et recovery           FAIT, pruning/recovery a durcir
+Lot 13 — Sauvegarde locale, versions et recovery           FAIT, pruning/recovery durci
 Lot 14 — Themes et styles                                  FAIT, designer de theme non inclus
 Lot 15 — Exemple integre                                   FAIT, scenario demo a enrichir
 Lot 16 — Tests package et CI                               FAIT, couverture a etendre
@@ -148,7 +148,7 @@ Reste a faire :
 
 ### Lot 4 — Types de questions V1
 
-Etat : **fait, a enrichir cote edition**.
+Etat : **fait, edition enrichie**.
 
 Livre :
 
@@ -162,22 +162,23 @@ Livre :
 - `date` ;
 - `linear-scale` ;
 - `rating` ;
-- `statement`.
+- `statement` ;
+- tests de validation de reponse sur les types V1 ;
+- preview compact des options dans le canvas ;
+- edition ergonomique des options avec ajout, suppression et reorder.
 
 Reste a faire :
 
 - renforcer les schemas de config par type avec Zod dedie ;
 - separer les editors par type au lieu d'un inspector generique ;
-- ajouter tests de validation pour chaque type ;
 - ajouter messages d'erreur localises par type ;
-- ajouter preview compact des options dans le canvas ;
-- ajouter edition ergonomique des options avec boutons ajouter/supprimer au lieu d'un textarea `value | label`.
+- ajouter renderers React custom par type quand l'API de rendu sera stabilisee.
 
 ---
 
 ### Lot 5 — FormRunner participant
 
-Etat : **fait**.
+Etat : **fait, UX validation durcie**.
 
 Livre :
 
@@ -189,15 +190,17 @@ Livre :
 - mode `single-page` ;
 - reponses controlees et non controlees ;
 - validation avant submit ;
-- theme CSS applique via tokens.
+- theme CSS applique via tokens ;
+- focus de premiere erreur cible sur le premier controle interactif ;
+- `aria-invalid`, `aria-describedby`, `name` et `disabled` sur les controles ;
+- libelles de navigation configurables ;
+- mode `readOnly` / `disabled`.
 
 Reste a faire :
 
-- ameliorer le focus de la premiere erreur : cibler l'input réel, pas seulement le message ;
 - ajouter tests React de rendu et validation avec Testing Library ;
-- verifier accessibilite : fieldset, labels, aria-invalid, aria-describedby ;
-- permettre libelles de boutons configurables ;
-- ajouter option `readOnly` ou `disabled` si besoin pour preview client.
+- auditer accessibilite au clavier sur tous les types ;
+- ajouter annonces live pour les erreurs si besoin.
 
 ---
 
@@ -271,7 +274,7 @@ Reste a faire :
 
 ### Lot 9 — Canvas designer pages/questions
 
-Etat : **fait, actions avancees a ajouter**.
+Etat : **fait, actions avancees ajoutees**.
 
 Livre :
 
@@ -281,14 +284,14 @@ Livre :
 - selection page/question ;
 - titre, description, required ;
 - diagnostics inline ;
-- empty state.
+- empty state ;
+- dupliquer/supprimer page ;
+- dupliquer/supprimer question ;
+- reorder pages/questions ;
+- affichage compact des options dans les blocs.
 
 Reste a faire :
 
-- ajouter boutons dupliquer/supprimer question ;
-- ajouter boutons dupliquer/supprimer page ;
-- ajouter reorder pages/questions ;
-- ameliorer l'affichage des differents types de questions ;
 - ajouter tests de selection et d'etat degrade.
 
 ---
@@ -319,7 +322,7 @@ Reste a faire :
 
 ### Lot 11 — Inspectors et edition des questions
 
-Etat : **fait, ergonomie a ameliorer**.
+Etat : **fait, ergonomie options amelioree**.
 
 Livre :
 
@@ -330,16 +333,16 @@ Livre :
 - titre, description, required ;
 - options ;
 - validations texte/nombre ;
-- config `linear-scale` et `rating`.
+- config `linear-scale` et `rating` ;
+- edition du theme ;
+- edition du mode de navigation ;
+- edition des options en liste avec ajout, suppression et reorder.
 
 Reste a faire :
 
 - decouper en `FormInspector`, `PageInspector`, `QuestionInspector` ;
 - creer `QuestionEditor` par type ;
-- remplacer le textarea d'options par une liste editable ;
 - ajouter erreurs inline dans l'inspector ;
-- ajouter edition du theme ;
-- ajouter edition de `navigation.mode` ;
 - ajouter tests React.
 
 ---
@@ -369,7 +372,7 @@ Reste a faire :
 
 ### Lot 13 — Sauvegarde locale, versions et recovery
 
-Etat : **fait, a durcir**.
+Etat : **fait, pruning/recovery durci**.
 
 Livre :
 
@@ -381,12 +384,13 @@ Livre :
 - liste versions ;
 - restore version ;
 - delete version ;
-- storage optionnel via `storage={false}`.
+- storage optionnel via `storage={false}` ;
+- derniere version valide automatique ;
+- pruning versions par nombre, age et taille ;
+- nettoyage des drafts/versions corrompus.
 
 Reste a faire :
 
-- sauvegarder automatiquement la derniere version valide ;
-- pruner versions par age et taille, pas seulement par nombre ;
 - remonter diagnostics de storage : quota exceeded, JSON corrompu, storage indisponible ;
 - ajouter UI de comparaison de version si besoin ;
 - ajouter tests de recovery dans composant React.

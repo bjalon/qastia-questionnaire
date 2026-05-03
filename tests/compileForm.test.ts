@@ -13,6 +13,12 @@ import {
 import { rangeForPath } from "../src/compiler";
 import {
   addQuestionSource,
+  deleteElementSource,
+  deletePageSource,
+  duplicateElementSource,
+  duplicatePageSource,
+  moveElementSource,
+  movePageSource,
   updateElementSource,
 } from "../src/designer/sourceMutations";
 
@@ -287,6 +293,106 @@ describe("submission", () => {
       ],
     });
   });
+
+  it("validates V1 question answer types", () => {
+    const source: FormSource = {
+      content: `version: 1
+kind: form
+pages:
+  - id: page_1
+    title: Page 1
+    elements:
+      - id: short
+        type: question
+        questionType: short-text
+        title: Texte
+        validation:
+          minLength: 3
+      - id: long
+        type: question
+        questionType: long-text
+        title: Texte long
+      - id: yes
+        type: question
+        questionType: yes-no
+        title: Oui non
+      - id: single
+        type: question
+        questionType: single-choice
+        title: Unique
+        options:
+          - value: a
+            label: A
+      - id: multiple
+        type: question
+        questionType: multiple-choice
+        title: Multiple
+        options:
+          - value: a
+            label: A
+      - id: dropdown
+        type: question
+        questionType: dropdown
+        title: Liste
+        options:
+          - value: a
+            label: A
+      - id: number
+        type: question
+        questionType: number
+        title: Nombre
+        validation:
+          integer: true
+      - id: date
+        type: question
+        questionType: date
+        title: Date
+      - id: scale
+        type: question
+        questionType: linear-scale
+        title: Echelle
+        config:
+          min: 1
+          max: 3
+      - id: rating
+        type: question
+        questionType: rating
+        title: Note
+        config:
+          max: 5
+`,
+    };
+    const result = compileForm(source);
+    if (result.status === "invalid") {
+      throw new Error("Expected compilable form");
+    }
+
+    const errors = validateAnswers(result.form, {
+      short: "ab",
+      long: 2,
+      yes: "oui",
+      single: "z",
+      multiple: ["z"],
+      dropdown: "z",
+      number: 1.5,
+      date: "03/05/2026",
+      scale: 4,
+      rating: 6,
+    });
+
+    expect(errors.map((error) => error.questionId)).toEqual([
+      "short",
+      "long",
+      "yes",
+      "single",
+      "multiple",
+      "dropdown",
+      "number",
+      "date",
+      "scale",
+      "rating",
+    ]);
+  });
 });
 
 describe("storage adapters", () => {
@@ -312,6 +418,43 @@ describe("storage adapters", () => {
 
     await adapter.clearDraft("demo");
     expect(await adapter.loadDraft("demo")).toBeNull();
+  });
+
+  it("prunes versions by count, age and byte size", async () => {
+    const values = new Map<string, string>();
+    const adapter = new LocalStorageFormDesignerPersistenceAdapter({
+      maxVersions: 3,
+      maxVersionAgeDays: 365,
+      maxVersionsBytes: 900,
+      storage: {
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, value),
+        removeItem: (key) => values.delete(key),
+      },
+    });
+
+    for (let index = 0; index < 5; index += 1) {
+      await adapter.saveVersion({
+        id: `version_${index}`,
+        key: "demo",
+        source: { content: `${validSource.content}\n# ${index}` },
+        createdAt: `2026-05-0${index + 1}T20:00:00.000Z`,
+        label: `Version ${index}`,
+        apiVersion: 1,
+      });
+    }
+    await adapter.saveVersion({
+      id: "old",
+      key: "demo",
+      source: validSource,
+      createdAt: "2020-01-01T20:00:00.000Z",
+      label: "Old",
+      apiVersion: 1,
+    });
+
+    const versions = await adapter.listVersions("demo");
+    expect(versions.length).toBeLessThanOrEqual(3);
+    expect(versions.some((version) => version.id === "old")).toBe(false);
   });
 });
 
@@ -347,5 +490,49 @@ describe("designer mutations", () => {
     const question = compiled.form.pages[0]?.elements.find((element) => element.id === "name");
     expect(question?.title).toBe("Nom complet");
     expect(question?.type === "question" ? question.required : undefined).toBe(false);
+  });
+
+  it("duplicates, reorders and deletes pages and questions", () => {
+    const duplicatedPage = duplicatePageSource(validSource, "page_1");
+    let compiled = compileForm(duplicatedPage.source);
+    expect(duplicatedPage.pageId).toBe("page_1_copy_1");
+    expect(compiled.status).not.toBe("invalid");
+    if (compiled.status === "invalid") {
+      throw new Error("Expected duplicated page source to compile");
+    }
+    expect(compiled.form.pages).toHaveLength(2);
+
+    const movedPage = movePageSource(duplicatedPage.source, duplicatedPage.pageId, -1);
+    compiled = compileForm(movedPage);
+    expect(compiled.status !== "invalid" ? compiled.form.pages[0]?.id : undefined).toBe(duplicatedPage.pageId);
+
+    const duplicatedElement = duplicateElementSource(validSource, "page_1", "name");
+    compiled = compileForm(duplicatedElement.source);
+    expect(duplicatedElement.elementId).toBe("name_copy_1");
+    expect(compiled.status).not.toBe("invalid");
+    if (compiled.status === "invalid") {
+      throw new Error("Expected duplicated element source to compile");
+    }
+    expect(compiled.form.pages[0]?.elements).toHaveLength(3);
+
+    const movedElement = moveElementSource(duplicatedElement.source, "page_1", duplicatedElement.elementId, -1);
+    compiled = compileForm(movedElement);
+    expect(compiled.status !== "invalid" ? compiled.form.pages[0]?.elements[0]?.id : undefined).toBe(duplicatedElement.elementId);
+
+    const deletedElement = deleteElementSource(duplicatedElement.source, "page_1", duplicatedElement.elementId);
+    compiled = compileForm(deletedElement);
+    expect(compiled.status).not.toBe("invalid");
+    if (compiled.status === "invalid") {
+      throw new Error("Expected deleted element source to compile");
+    }
+    expect(compiled.form.pages[0]?.elements).toHaveLength(2);
+
+    const deletedPage = deletePageSource(duplicatedPage.source, duplicatedPage.pageId);
+    compiled = compileForm(deletedPage);
+    expect(compiled.status).not.toBe("invalid");
+    if (compiled.status === "invalid") {
+      throw new Error("Expected deleted page source to compile");
+    }
+    expect(compiled.form.pages).toHaveLength(1);
   });
 });

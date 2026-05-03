@@ -324,6 +324,7 @@ type FormDesignerOptions = {
   showDiagnostics: boolean;
   defaultViewMode: "form" | "yaml" | "preview";
   viewModes: readonly ("form" | "yaml" | "preview")[];
+  autoSaveValidVersions: boolean;
 };
 ```
 
@@ -352,6 +353,9 @@ import {
 
 const storage = new LocalStorageFormDesignerPersistenceAdapter({
   namespace: "qastia-coaching:form-drafts",
+  maxVersions: 40,
+  maxVersionAgeDays: 90,
+  maxVersionsBytes: 500_000,
 });
 
 <FormDesigner
@@ -367,8 +371,13 @@ L'adapter public expose seulement :
 - `loadDraft(key)` ;
 - `saveDraft(snapshot)` ;
 - `clearDraft(key)`.
+- `listVersions(key)` ;
+- `saveVersion(snapshot)` ;
+- `deleteVersion(key, versionId)`.
 
 Le type `FormDesignerPersistenceAdapter` est exporte pour brancher un stockage applicatif.
+
+Le designer sauvegarde aussi une version automatique quand la compilation repasse en `valid`. Cette sauvegarde peut etre desactivee via `options={{ autoSaveValidVersions: false }}`.
 
 ## FormRunner
 
@@ -404,6 +413,14 @@ type FormRunnerProps = {
   answers?: FormAnswers;
   defaultAnswers?: FormAnswers;
   viewMode?: "participant" | "preview";
+  disabled?: boolean;
+  readOnly?: boolean;
+  labels?: Partial<{
+    previous: string;
+    next: string;
+    submit: string;
+    submitted: string;
+  }>;
   onAnswersChange?: (answers: FormAnswers) => void;
   onSubmit?: (event: FormSubmitEvent) => void;
 };

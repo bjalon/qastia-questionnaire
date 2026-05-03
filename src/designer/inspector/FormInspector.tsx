@@ -3,17 +3,19 @@ import type {
   CompiledForm,
   CompiledFormElement,
   CompiledFormPage,
+  QuestionOption,
 } from "../../publicTypes";
 import type { FormDesignerSelection } from "../types";
-import {
-  formatOptionsText,
-  parseOptionsText,
-} from "../sourceMutations";
+import { parseOptionsText } from "../sourceMutations";
 
 export type FormInspectorProps = {
   readonly form: CompiledForm | null;
   readonly selection: FormDesignerSelection;
   readonly onUpdateForm: (patch: { readonly title?: string; readonly description?: string }) => void;
+  readonly onUpdateFormSettings: (patch: {
+    readonly themeId?: string;
+    readonly navigationMode?: "paged" | "single-page";
+  }) => void;
   readonly onUpdatePage: (pageId: string, patch: { readonly title?: string; readonly description?: string }) => void;
   readonly onUpdateElement: (
     pageId: string,
@@ -33,6 +35,7 @@ export function FormInspector({
   form,
   selection,
   onUpdateForm,
+  onUpdateFormSettings,
   onUpdatePage,
   onUpdateElement,
 }: FormInspectorProps): React.ReactElement {
@@ -45,11 +48,18 @@ export function FormInspector({
         <h2>Inspector</h2>
       </header>
       {selection.kind === "form" && form ? (
-        <FormFields
-          title={form.metadata.title}
-          description={form.metadata.description ?? ""}
-          onChange={onUpdateForm}
-        />
+        <>
+          <FormFields
+            title={form.metadata.title}
+            description={form.metadata.description ?? ""}
+            onChange={onUpdateForm}
+          />
+          <FormSettingsFields
+            themeId={form.theme.id}
+            navigationMode={form.navigation}
+            onChange={onUpdateFormSettings}
+          />
+        </>
       ) : null}
       {selection.kind === "page" && page ? (
         <FormFields
@@ -67,6 +77,32 @@ export function FormInspector({
       ) : null}
       {!form ? <p className="qf-inspector-empty">Aucune sélection éditable.</p> : null}
     </section>
+  );
+}
+
+function FormSettingsFields({
+  themeId,
+  navigationMode,
+  onChange,
+}: {
+  readonly themeId: string;
+  readonly navigationMode: "paged" | "single-page";
+  readonly onChange: (patch: { readonly themeId?: string; readonly navigationMode?: "paged" | "single-page" }) => void;
+}): React.ReactElement {
+  return (
+    <div className="qf-inspector-fields">
+      <label>
+        <span>Theme</span>
+        <input value={themeId} onChange={(event) => onChange({ themeId: event.currentTarget.value })} />
+      </label>
+      <label>
+        <span>Navigation</span>
+        <select value={navigationMode} onChange={(event) => onChange({ navigationMode: event.currentTarget.value as "paged" | "single-page" })}>
+          <option value="paged">Pages</option>
+          <option value="single-page">Page unique</option>
+        </select>
+      </label>
+    </div>
   );
 }
 
@@ -127,22 +163,80 @@ function ElementFields({
             <span>Obligatoire</span>
           </label>
           {element.options.length > 0 ? (
-            <label>
-              <span>Options</span>
-              <textarea
-                rows={5}
-                value={formatOptionsText(element.options)}
-                onChange={(event) =>
-                  onChange(pageId, element.id, {
-                    options: parseOptionsText(event.currentTarget.value),
-                  })
-                }
-              />
-            </label>
+            <OptionsEditor
+              options={element.options}
+              onChange={(options) => onChange(pageId, element.id, { options })}
+            />
           ) : null}
           <QuestionSpecificFields pageId={pageId} element={element} onChange={onChange} />
         </>
       ) : null}
+    </div>
+  );
+}
+
+function OptionsEditor({
+  options,
+  onChange,
+}: {
+  readonly options: readonly QuestionOption[];
+  readonly onChange: (options: readonly QuestionOption[]) => void;
+}): React.ReactElement {
+  function updateOption(index: number, patch: Partial<QuestionOption>): void {
+    onChange(options.map((option, optionIndex) => optionIndex === index ? { ...option, ...patch } : option));
+  }
+
+  function addOption(): void {
+    const nextIndex = options.length + 1;
+    onChange([...options, { value: `option_${nextIndex}`, label: `Option ${nextIndex}` }]);
+  }
+
+  function removeOption(index: number): void {
+    onChange(options.filter((_, optionIndex) => optionIndex !== index));
+  }
+
+  function moveOption(index: number, direction: -1 | 1): void {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= options.length) {
+      return;
+    }
+    const nextOptions = [...options];
+    const [option] = nextOptions.splice(index, 1);
+    nextOptions.splice(nextIndex, 0, option);
+    onChange(nextOptions);
+  }
+
+  return (
+    <div className="qf-options-editor">
+      <div>
+        <span>Options</span>
+        <button type="button" onClick={addOption}>
+          Ajouter
+        </button>
+      </div>
+      {options.map((option, index) => (
+        <div key={`${option.value}-${index}`} className="qf-option-row">
+          <input
+            aria-label="Valeur"
+            value={option.value}
+            onChange={(event) => updateOption(index, { value: event.currentTarget.value })}
+          />
+          <input
+            aria-label="Libelle"
+            value={option.label}
+            onChange={(event) => updateOption(index, { label: event.currentTarget.value })}
+          />
+          <button type="button" title="Monter" disabled={index === 0} onClick={() => moveOption(index, -1)}>
+            ↑
+          </button>
+          <button type="button" title="Descendre" disabled={index >= options.length - 1} onClick={() => moveOption(index, 1)}>
+            ↓
+          </button>
+          <button type="button" title="Supprimer" onClick={() => removeOption(index)}>
+            ×
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

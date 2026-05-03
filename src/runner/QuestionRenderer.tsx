@@ -9,6 +9,7 @@ export type QuestionRendererProps = {
   readonly question: CompiledQuestionElement;
   readonly value: FormAnswerValue | undefined;
   readonly error?: string;
+  readonly disabled?: boolean;
   readonly onChange: (questionId: string, value: FormAnswerValue | undefined) => void;
 };
 
@@ -16,18 +17,19 @@ export function QuestionRenderer({
   question,
   value,
   error,
+  disabled = false,
   onChange,
 }: QuestionRendererProps): React.ReactElement {
   const describedBy = error ? `${question.id}-error` : undefined;
 
   return (
-    <fieldset className="qf-question" data-question-type={question.questionType}>
+    <fieldset className="qf-question" data-question-id={question.id} data-question-type={question.questionType}>
       <legend>
         <span>{question.title}</span>
         {question.required ? <strong aria-label="obligatoire">*</strong> : null}
       </legend>
       {question.description ? <p className="qf-question-description">{question.description}</p> : null}
-      {renderControl(question, value, describedBy, onChange)}
+      {renderControl(question, value, describedBy, disabled, Boolean(error), onChange)}
       {error ? (
         <p className="qf-error" id={`${question.id}-error`}>
           {error}
@@ -41,6 +43,8 @@ function renderControl(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  disabled: boolean,
+  invalid: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
 ): React.ReactElement {
   switch (question.questionType) {
@@ -48,7 +52,10 @@ function renderControl(
       return (
         <input
           aria-describedby={describedBy}
+          aria-invalid={invalid}
           className="qf-input"
+          name={question.id}
+          disabled={disabled}
           type="text"
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(question.id, event.currentTarget.value)}
@@ -58,7 +65,10 @@ function renderControl(
       return (
         <textarea
           aria-describedby={describedBy}
+          aria-invalid={invalid}
           className="qf-textarea"
+          name={question.id}
+          disabled={disabled}
           rows={5}
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(question.id, event.currentTarget.value)}
@@ -70,6 +80,7 @@ function renderControl(
           <button
             type="button"
             className={value === true ? "is-selected" : ""}
+            disabled={disabled}
             onClick={() => onChange(question.id, true)}
           >
             Oui
@@ -77,6 +88,7 @@ function renderControl(
           <button
             type="button"
             className={value === false ? "is-selected" : ""}
+            disabled={disabled}
             onClick={() => onChange(question.id, false)}
           >
             Non
@@ -84,14 +96,17 @@ function renderControl(
         </div>
       );
     case "single-choice":
-      return renderOptions(question, value, describedBy, onChange, "radio");
+      return renderOptions(question, value, describedBy, disabled, invalid, onChange, "radio");
     case "multiple-choice":
-      return renderOptions(question, value, describedBy, onChange, "checkbox");
+      return renderOptions(question, value, describedBy, disabled, invalid, onChange, "checkbox");
     case "dropdown":
       return (
         <select
           aria-describedby={describedBy}
+          aria-invalid={invalid}
           className="qf-input"
+          name={question.id}
+          disabled={disabled}
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(question.id, event.currentTarget.value || undefined)}
         >
@@ -107,7 +122,10 @@ function renderControl(
       return (
         <input
           aria-describedby={describedBy}
+          aria-invalid={invalid}
           className="qf-input"
+          name={question.id}
+          disabled={disabled}
           type="number"
           value={typeof value === "number" ? String(value) : ""}
           onChange={(event) => onChange(question.id, parseNumberValue(event))}
@@ -117,16 +135,19 @@ function renderControl(
       return (
         <input
           aria-describedby={describedBy}
+          aria-invalid={invalid}
           className="qf-input"
+          name={question.id}
+          disabled={disabled}
           type="date"
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(question.id, event.currentTarget.value || undefined)}
         />
       );
     case "linear-scale":
-      return renderScale(question, value, describedBy, onChange);
+      return renderScale(question, value, describedBy, disabled, onChange);
     case "rating":
-      return renderRating(question, value, describedBy, onChange);
+      return renderRating(question, value, describedBy, disabled, onChange);
     default:
       return (
         <p className="qf-unsupported" aria-describedby={describedBy}>
@@ -140,6 +161,8 @@ function renderOptions(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  disabled: boolean,
+  invalid: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
   inputType: "radio" | "checkbox",
 ): React.ReactElement {
@@ -156,6 +179,9 @@ function renderOptions(
               name={question.id}
               value={option.value}
               checked={checked}
+              disabled={disabled}
+              aria-invalid={invalid}
+              aria-describedby={describedBy}
               onChange={(event) => {
                 if (inputType === "radio") {
                   onChange(question.id, option.value);
@@ -178,6 +204,7 @@ function renderScale(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  disabled: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
 ): React.ReactElement {
   const min = numberFromRecord(question.config, "min") ?? 1;
@@ -194,6 +221,7 @@ function renderScale(
             key={item}
             type="button"
             className={value === item ? "is-selected" : ""}
+            disabled={disabled}
             onClick={() => onChange(question.id, item)}
           >
             {item}
@@ -209,6 +237,7 @@ function renderRating(
   question: CompiledQuestionElement,
   value: FormAnswerValue | undefined,
   describedBy: string | undefined,
+  disabled: boolean,
   onChange: (questionId: string, value: FormAnswerValue | undefined) => void,
 ): React.ReactElement {
   const max = numberFromRecord(question.config, "max") ?? 5;
@@ -221,6 +250,7 @@ function renderRating(
           type="button"
           aria-label={`${item} sur ${max}`}
           className={typeof value === "number" && value >= item ? "is-selected" : ""}
+          disabled={disabled}
           onClick={() => onChange(question.id, item)}
         >
           ★

@@ -13,15 +13,24 @@ export type FormDesignerStorageLike = {
 export type LocalStorageFormDesignerPersistenceAdapterOptions = {
   readonly namespace?: string;
   readonly storage?: FormDesignerStorageLike;
+  readonly maxVersions?: number;
+  readonly maxVersionAgeDays?: number;
+  readonly maxVersionsBytes?: number;
 };
 
 export class LocalStorageFormDesignerPersistenceAdapter implements FormDesignerPersistenceAdapter {
   private readonly namespace: string;
   private readonly storage: FormDesignerStorageLike | null;
+  private readonly maxVersions: number;
+  private readonly maxVersionAgeDays: number | null;
+  private readonly maxVersionsBytes: number | null;
 
   constructor(options: LocalStorageFormDesignerPersistenceAdapterOptions = {}) {
     this.namespace = options.namespace ?? "qastia-form-runtime:draft";
     this.storage = options.storage ?? resolveBrowserStorage();
+    this.maxVersions = options.maxVersions ?? 40;
+    this.maxVersionAgeDays = options.maxVersionAgeDays ?? null;
+    this.maxVersionsBytes = options.maxVersionsBytes ?? null;
   }
 
   async loadDraft(key: string): Promise<FormDesignerDraftSnapshot | null> {
@@ -33,6 +42,7 @@ export class LocalStorageFormDesignerPersistenceAdapter implements FormDesignerP
     try {
       const parsed = JSON.parse(storedValue) as Partial<FormDesignerDraftSnapshot>;
       if (parsed.apiVersion !== 1 || !parsed.source || typeof parsed.updatedAt !== "string") {
+        await this.clearDraft(key);
         return null;
       }
 
@@ -43,6 +53,7 @@ export class LocalStorageFormDesignerPersistenceAdapter implements FormDesignerP
         apiVersion: 1,
       };
     } catch {
+      await this.clearDraft(key);
       return null;
     }
   }
@@ -67,15 +78,22 @@ export class LocalStorageFormDesignerPersistenceAdapter implements FormDesignerP
         return [];
       }
 
-      return parsed.filter(isVersionSnapshot).sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      return pruneVersions(
+        parsed.filter(isVersionSnapshot).sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+        this.maxVersions,
+        this.maxVersionAgeDays,
+        this.maxVersionsBytes,
+      );
     } catch {
+      this.storage?.removeItem(this.versionsKey(key));
       return [];
     }
   }
 
   async saveVersion(snapshot: FormDesignerVersionSnapshot): Promise<void> {
     const versions = (await this.listVersions(snapshot.key)).filter((version) => version.id !== snapshot.id);
-    this.storage?.setItem(this.versionsKey(snapshot.key), JSON.stringify([snapshot, ...versions].slice(0, 40)));
+    const nextVersions = pruneVersions([snapshot, ...versions], this.maxVersions, this.maxVersionAgeDays, this.maxVersionsBytes);
+    this.storage?.setItem(this.versionsKey(snapshot.key), JSON.stringify(nextVersions));
   }
 
   async deleteVersion(key: string, versionId: string): Promise<void> {
@@ -90,6 +108,33 @@ export class LocalStorageFormDesignerPersistenceAdapter implements FormDesignerP
   private versionsKey(key: string): string {
     return `${this.namespace}:versions:${key}`;
   }
+}
+
+function pruneVersions(
+  versions: readonly FormDesignerVersionSnapshot[],
+  maxVersions: number,
+  maxVersionAgeDays: number | null,
+  maxVersionsBytes: number | null,
+): readonly FormDesignerVersionSnapshot[] {
+  const now = Date.now();
+  const minCreatedAt = maxVersionAgeDays === null ? null : now - maxVersionAgeDays * 24 * 60 * 60 * 1000;
+  let pruned = versions
+    .filter((version) => {
+      if (minCreatedAt === null) {
+        return true;
+      }
+      const createdAt = Date.parse(version.createdAt);
+      return Number.isNaN(createdAt) || createdAt >= minCreatedAt;
+    })
+    .slice(0, Math.max(0, maxVersions));
+
+  if (maxVersionsBytes !== null) {
+    while (pruned.length > 0 && JSON.stringify(pruned).length > maxVersionsBytes) {
+      pruned = pruned.slice(0, -1);
+    }
+  }
+
+  return pruned;
 }
 
 function isVersionSnapshot(value: unknown): value is FormDesignerVersionSnapshot {

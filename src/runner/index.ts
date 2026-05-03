@@ -8,6 +8,7 @@ export { QuestionRenderer } from "./QuestionRenderer";
 export { getQuestionById, validateAnswers } from "./validateAnswers";
 
 export type {
+  FormRunnerLabels,
   FormRunnerProps,
   FormRunnerSubmitState,
   FormRunnerViewMode,

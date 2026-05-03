@@ -31,6 +31,25 @@ export function updateFormMetadataSource(
   });
 }
 
+export function updateFormSettingsSource(
+  source: FormSource,
+  patch: {
+    readonly themeId?: string;
+    readonly navigationMode?: "paged" | "single-page";
+  },
+): FormSource {
+  return updateYamlSource(source, (form) => {
+    if (patch.themeId !== undefined) {
+      const theme = ensureRecord(form, "theme");
+      applyStringPatch(theme, "id", patch.themeId);
+    }
+    if (patch.navigationMode !== undefined) {
+      const navigation = ensureRecord(form, "navigation");
+      navigation.mode = patch.navigationMode;
+    }
+  });
+}
+
 export function updatePageSource(
   source: FormSource,
   pageId: string,
@@ -106,6 +125,59 @@ export function addPageSource(
   return { source: nextSource, pageId: nextPageId };
 }
 
+export function duplicatePageSource(
+  source: FormSource,
+  pageId: string,
+): { readonly source: FormSource; readonly pageId: string } {
+  let nextPageId = "";
+  const nextSource = updateYamlSource(source, (form) => {
+    const pages = ensureArray(form, "pages");
+    const pageIndex = pages.findIndex((item) => isRecord(item) && item.id === pageId);
+    const page = pageIndex >= 0 && isRecord(pages[pageIndex]) ? pages[pageIndex] : undefined;
+    if (!page) {
+      return;
+    }
+
+    const elementIds = collectElementIds(form);
+    nextPageId = generateId(`${String(page.id ?? "page")}_copy`, collectPageIds(form));
+    const duplicate = deepCloneRecord(page);
+    duplicate.id = nextPageId;
+    duplicate.title = `${String(page.title ?? "Page")} copie`;
+    if (Array.isArray(duplicate.elements)) {
+      duplicate.elements = duplicate.elements.map((element) => {
+        if (!isRecord(element)) {
+          return element;
+        }
+        const nextElement = { ...element };
+        nextElement.id = generateId(`${String(element.id ?? "element")}_copy`, elementIds);
+        elementIds.add(String(nextElement.id));
+        return nextElement;
+      });
+    }
+    pages.splice(pageIndex + 1, 0, duplicate);
+  });
+
+  return { source: nextSource, pageId: nextPageId };
+}
+
+export function deletePageSource(source: FormSource, pageId: string): FormSource {
+  return updateYamlSource(source, (form) => {
+    const pages = ensureArray(form, "pages");
+    const pageIndex = pages.findIndex((item) => isRecord(item) && item.id === pageId);
+    if (pageIndex >= 0) {
+      pages.splice(pageIndex, 1);
+    }
+  });
+}
+
+export function movePageSource(source: FormSource, pageId: string, direction: -1 | 1): FormSource {
+  return updateYamlSource(source, (form) => {
+    const pages = ensureArray(form, "pages");
+    const pageIndex = pages.findIndex((item) => isRecord(item) && item.id === pageId);
+    moveArrayItem(pages, pageIndex, direction);
+  });
+}
+
 export function addQuestionSource(
   source: FormSource,
   runtime: FormRuntime,
@@ -140,6 +212,56 @@ export function addQuestionSource(
   });
 
   return { source: nextSource, pageId: nextPageId, elementId: nextElementId };
+}
+
+export function duplicateElementSource(
+  source: FormSource,
+  pageId: string,
+  elementId: string,
+): { readonly source: FormSource; readonly elementId: string } {
+  let nextElementId = "";
+  const nextSource = updateYamlSource(source, (form) => {
+    const page = findPage(form, pageId);
+    const elements = Array.isArray(page?.elements) ? page.elements : [];
+    const elementIndex = elements.findIndex((item) => isRecord(item) && item.id === elementId);
+    const element = elementIndex >= 0 && isRecord(elements[elementIndex]) ? elements[elementIndex] : undefined;
+    if (!element) {
+      return;
+    }
+
+    nextElementId = generateId(`${String(element.id ?? "element")}_copy`, collectElementIds(form));
+    const duplicate = deepCloneRecord(element);
+    duplicate.id = nextElementId;
+    duplicate.title = `${String(element.title ?? "Question")} copie`;
+    elements.splice(elementIndex + 1, 0, duplicate);
+  });
+
+  return { source: nextSource, elementId: nextElementId };
+}
+
+export function deleteElementSource(source: FormSource, pageId: string, elementId: string): FormSource {
+  return updateYamlSource(source, (form) => {
+    const page = findPage(form, pageId);
+    const elements = Array.isArray(page?.elements) ? page.elements : [];
+    const elementIndex = elements.findIndex((item) => isRecord(item) && item.id === elementId);
+    if (elementIndex >= 0) {
+      elements.splice(elementIndex, 1);
+    }
+  });
+}
+
+export function moveElementSource(
+  source: FormSource,
+  pageId: string,
+  elementId: string,
+  direction: -1 | 1,
+): FormSource {
+  return updateYamlSource(source, (form) => {
+    const page = findPage(form, pageId);
+    const elements = Array.isArray(page?.elements) ? page.elements : [];
+    const elementIndex = elements.findIndex((item) => isRecord(item) && item.id === elementId);
+    moveArrayItem(elements, elementIndex, direction);
+  });
 }
 
 export function parseOptionsText(value: string): readonly QuestionOption[] {
@@ -223,12 +345,12 @@ function findElement(form: MutableRecord, pageId: string, elementId: string): Mu
   return elements.find((item): item is MutableRecord => isRecord(item) && item.id === elementId);
 }
 
-function collectPageIds(form: MutableRecord): ReadonlySet<string> {
+function collectPageIds(form: MutableRecord): Set<string> {
   const pages = Array.isArray(form.pages) ? form.pages : [];
   return new Set(pages.filter(isRecord).map((page) => String(page.id ?? "")));
 }
 
-function collectElementIds(form: MutableRecord): ReadonlySet<string> {
+function collectElementIds(form: MutableRecord): Set<string> {
   const pages = Array.isArray(form.pages) ? form.pages : [];
   const ids = new Set<string>();
   for (const page of pages) {
@@ -286,6 +408,20 @@ function compactRecord(record: Readonly<Record<string, unknown>>): Readonly<Reco
   return Object.fromEntries(
     Object.entries(record).filter(([, value]) => value !== undefined && value !== ""),
   );
+}
+
+function moveArrayItem(items: unknown[], index: number, direction: -1 | 1): void {
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || nextIndex >= items.length) {
+    return;
+  }
+
+  const [item] = items.splice(index, 1);
+  items.splice(nextIndex, 0, item);
+}
+
+function deepCloneRecord(record: MutableRecord): MutableRecord {
+  return YAML.parse(YAML.stringify(record)) as MutableRecord;
 }
 
 function isRecord(value: unknown): value is MutableRecord {

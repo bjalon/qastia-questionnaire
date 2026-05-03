@@ -17,6 +17,9 @@ export type FormSourceChangeReason =
   | "yaml-edit"
   | "palette-add-question"
   | "palette-add-page"
+  | "canvas-duplicate"
+  | "canvas-delete"
+  | "canvas-reorder"
   | "inspector-edit"
   | "version-restore";
 
@@ -29,6 +32,7 @@ export type FormDesignerOptions = {
   readonly showDiagnostics: boolean;
   readonly defaultViewMode: FormDesignerViewMode;
   readonly viewModes: readonly FormDesignerViewMode[];
+  readonly autoSaveValidVersions: boolean;
 };
 
 export type FormDesignerProps = {

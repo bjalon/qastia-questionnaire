@@ -18,6 +18,12 @@ import { validateAnswers } from "./validateAnswers";
 
 export type FormRunnerViewMode = "participant" | "preview";
 export type FormRunnerSubmitState = "idle" | "submitted";
+export type FormRunnerLabels = {
+  readonly previous: string;
+  readonly next: string;
+  readonly submit: string;
+  readonly submitted: string;
+};
 
 export type FormRunnerProps = {
   readonly form: CompiledForm;
@@ -25,8 +31,18 @@ export type FormRunnerProps = {
   readonly answers?: FormAnswers;
   readonly defaultAnswers?: FormAnswers;
   readonly viewMode?: FormRunnerViewMode;
+  readonly disabled?: boolean;
+  readonly readOnly?: boolean;
+  readonly labels?: Partial<FormRunnerLabels>;
   readonly onAnswersChange?: (answers: FormAnswers) => void;
   readonly onSubmit?: (event: FormSubmitEvent) => void;
+};
+
+const defaultRunnerLabels: FormRunnerLabels = {
+  previous: "Precedent",
+  next: "Suivant",
+  submit: "Envoyer",
+  submitted: "Reponse envoyee.",
 };
 
 export function FormRunner({
@@ -35,6 +51,9 @@ export function FormRunner({
   answers,
   defaultAnswers = {},
   viewMode = "participant",
+  disabled = false,
+  readOnly = false,
+  labels,
   onAnswersChange,
   onSubmit,
 }: FormRunnerProps): React.ReactElement {
@@ -46,6 +65,8 @@ export function FormRunner({
   const currentPage = form.navigation === "single-page" ? undefined : form.pages[pageIndex];
   const renderedPages = form.navigation === "single-page" ? form.pages : currentPage ? [currentPage] : [];
   const pageCount = form.navigation === "single-page" ? 1 : Math.max(form.pages.length, 1);
+  const runnerLabels = { ...defaultRunnerLabels, ...labels };
+  const controlsDisabled = disabled || readOnly;
   const errorsByQuestionId = useMemo(
     () => new Map(validationErrors.map((error) => [error.questionId, error.message])),
     [validationErrors],
@@ -93,6 +114,7 @@ export function FormRunner({
           page={page}
           answers={currentAnswers}
           errors={errorsByQuestionId}
+          disabled={controlsDisabled}
           onChange={updateAnswer}
         />
       ))}
@@ -101,19 +123,20 @@ export function FormRunner({
         <FormNavigation
           pageIndex={pageIndex}
           pageCount={pageCount}
-          canSubmit={form.pages.length > 0}
+          canSubmit={form.pages.length > 0 && !controlsDisabled}
+          labels={runnerLabels}
           onPrevious={() => setPageIndex((current) => Math.max(0, current - 1))}
           onNext={() => setPageIndex((current) => Math.min(form.pages.length - 1, current + 1))}
         />
       ) : (
         <footer className="qf-navigation">
-          <button type="submit" className="qf-primary" disabled={form.pages.length === 0}>
-            Envoyer
+          <button type="submit" className="qf-primary" disabled={form.pages.length === 0 || controlsDisabled}>
+            {runnerLabels.submit}
           </button>
         </footer>
       )}
 
-      {submitState === "submitted" ? <p className="qf-submit-state">Reponse envoyee.</p> : null}
+      {submitState === "submitted" ? <p className="qf-submit-state">{runnerLabels.submitted}</p> : null}
     </form>
   );
 }
@@ -123,6 +146,14 @@ function focusFirstError(questionId: string | undefined): void {
     return;
   }
 
-  const element = document.querySelector<HTMLElement>(`[data-question-type] [name="${questionId}"], #${questionId}-error`);
-  element?.focus();
+  window.setTimeout(() => {
+    const element = document.querySelector<HTMLElement>(
+      `[data-question-id="${questionId}"] input:not([type="hidden"]), ` +
+        `[data-question-id="${questionId}"] textarea, ` +
+        `[data-question-id="${questionId}"] select, ` +
+        `[data-question-id="${questionId}"] button, ` +
+        `#${questionId}-error`,
+    );
+    element?.focus();
+  }, 0);
 }
