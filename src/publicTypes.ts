@@ -73,6 +73,7 @@ export type {
   FormDesignerProps,
   FormDesignerCanvasEditMode,
   FormDesignerSelection,
+  FormDesignerSourceUpdateMode,
   FormDesignerViewMode,
   FormSourceChangeEvent,
   FormSourceChangeReason,

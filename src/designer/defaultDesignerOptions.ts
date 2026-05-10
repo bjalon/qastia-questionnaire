@@ -6,4 +6,5 @@ export const defaultDesignerOptions: FormDesignerOptions = {
   viewModes: ["form", "yaml", "preview"],
   autoSaveValidVersions: true,
   canvasEditMode: "instant",
+  sourceUpdateMode: "immediate",
 };

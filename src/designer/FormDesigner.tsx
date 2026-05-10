@@ -71,11 +71,15 @@ export function FormDesigner({
   const [internalSelection, setInternalSelection] = useState<FormDesignerSelection>(defaultSelection);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
+  const [manualSource, setManualSource] = useState<FormSource | null>(null);
   const [openModeMenu, setOpenModeMenu] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(source !== undefined || storage === false);
   const [recoveredAt, setRecoveredAt] = useState<string | null>(null);
   const lastValidVersionHash = useRef<string | null>(null);
-  const currentSource = source ?? internalSource;
+  const baseSource = source ?? internalSource;
+  const manualMode = resolvedOptions.sourceUpdateMode === "manual";
+  const currentSource = manualMode ? manualSource ?? baseSource : baseSource;
+  const hasManualChanges = manualMode && manualSource !== null && !sameSource(manualSource, baseSource);
   const currentSelection = selection ?? internalSelection;
   const compileResult = useMemo(
     () => compileForm(currentSource, runtime, { mode: "authoring" }),
@@ -84,8 +88,15 @@ export function FormDesigner({
   const form = getCompiledForm(compileResult);
 
   useEffect(() => {
+    if (manualMode && hasManualChanges) {
+      return;
+    }
     onCompile?.(compileResult);
-  }, [compileResult, onCompile]);
+  }, [compileResult, hasManualChanges, manualMode, onCompile]);
+
+  useEffect(() => {
+    setManualSource(null);
+  }, [baseSource.content, baseSource.uri, manualMode]);
 
   useEffect(() => {
     if (!storage || !resolvedOptions.autoSaveValidVersions || compileResult.status !== "valid") {
@@ -170,6 +181,10 @@ export function FormDesigner({
   }, [currentSelection.kind, viewMode]);
 
   function applySource(nextSource: FormSource, reason: FormSourceChangeReason): void {
+    if (manualMode) {
+      setManualSource(nextSource);
+      return;
+    }
     if (!source) {
       setInternalSource(nextSource);
     }
@@ -186,6 +201,25 @@ export function FormDesigner({
 
   function restoreVersion(nextSource: FormSource): void {
     applySource(nextSource, "version-restore");
+  }
+
+  function saveManualChanges(): void {
+    if (!manualSource || !hasManualChanges) {
+      return;
+    }
+    if (!source) {
+      setInternalSource(manualSource);
+    }
+    persistDraft(manualSource, storage, resolvedStorageKey(storageKey, manualSource, form));
+    onSourceChange?.({ source: manualSource, reason: "manual-save" });
+    setManualSource(null);
+  }
+
+  function cancelManualChanges(): void {
+    if (!hasManualChanges) {
+      return;
+    }
+    setManualSource(null);
   }
 
   function addQuestion(questionTypeId: string): void {
@@ -279,6 +313,16 @@ export function FormDesigner({
           )}
         </div>
         <div className="qf-designer-actions">
+          {manualMode ? (
+            <div className="qf-save-action-group">
+              <button type="button" disabled={!hasManualChanges} onClick={saveManualChanges}>
+                Sauvegarder
+              </button>
+              <button type="button" disabled={!hasManualChanges} onClick={cancelManualChanges}>
+                Annuler
+              </button>
+            </div>
+          ) : null}
           {actions}
           <div className="qf-mode-action" onClick={(event) => event.stopPropagation()}>
             <button
@@ -443,6 +487,10 @@ function resolvedStorageKey(
   form: CompiledForm | null,
 ): string {
   return explicitKey ?? form?.id ?? source.uri ?? "default";
+}
+
+function sameSource(left: FormSource, right: FormSource): boolean {
+  return left.content === right.content && left.uri === right.uri;
 }
 
 function modeLabel(mode: FormDesignerViewMode): string {

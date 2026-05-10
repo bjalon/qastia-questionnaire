@@ -339,11 +339,18 @@
   align-items: center;
 }
 
+.qf-save-action-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .qf-mode-action {
   position: relative;
 }
 
 .qf-designer-actions > button,
+.qf-save-action-group > button,
 .qf-mode-action > button {
   display: inline-flex;
   gap: 8px;
@@ -353,6 +360,17 @@
   min-height: 38px;
   padding: 8px 12px;
   white-space: nowrap;
+}
+
+.qf-save-action-group > button:first-child {
+  color: var(--qf-accent-contrast, #ffffff);
+  background: var(--qf-accent, #2f6f73);
+  border-color: var(--qf-accent, #2f6f73);
+}
+
+.qf-save-action-group > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .qf-mode-action > button {
@@ -432,8 +450,6 @@
   align-self: start;
   position: sticky;
   top: 16px;
-  max-height: calc(100vh - 160px);
-  overflow: auto;
 }
 
 .qf-designer-canvas {
@@ -935,8 +951,6 @@
 
   .qf-designer-sidebar {
     position: static;
-    max-height: none;
-    overflow: visible;
   }
 
   .qf-designer-canvas {
@@ -955,7 +969,12 @@
     flex-direction: column;
   }
 
+  .qf-save-action-group {
+    width: 100%;
+  }
+
   .qf-mode-action > button,
+  .qf-save-action-group > button,
   .qf-designer-actions > button {
     justify-content: center;
     width: 100%;

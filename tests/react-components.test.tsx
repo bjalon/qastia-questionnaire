@@ -135,7 +135,7 @@ describe("FormDesigner", () => {
     );
   });
 
-  it("edits selected question blocks with save and cancel in commit mode", () => {
+  it("edits selected question blocks with global save and cancel in manual mode", () => {
     const onSourceChange = vi.fn();
 
     render(
@@ -143,7 +143,7 @@ describe("FormDesigner", () => {
         source={source}
         runtime={defaultFormRuntime}
         storage={false}
-        options={{ canvasEditMode: "commit" }}
+        options={{ sourceUpdateMode: "manual" }}
         onSourceChange={onSourceChange}
       />,
     );
@@ -158,15 +158,17 @@ describe("FormDesigner", () => {
     });
     expect(onSourceChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sauvegarder" }));
     expect(onSourceChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ reason: "inspector-edit" }),
+      expect.objectContaining({ reason: "manual-save" }),
     );
     expect((onSourceChange.mock.calls.at(-1)?.[0].source as FormSource).content).toContain("Nom complet");
 
+    onSourceChange.mockClear();
     fireEvent.change(screen.getByLabelText("Titre de la question"), {
       target: { value: "Valeur annulee" },
     });
+    expect(onSourceChange).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Annuler" }));
     expect(screen.getByLabelText("Titre de la question")).toHaveValue("Nom");
   });

@@ -50,6 +50,7 @@ export type {
   FormDesignerProps,
   FormDesignerCanvasEditMode,
   FormDesignerSelection,
+  FormDesignerSourceUpdateMode,
   FormDesignerViewMode,
   DesignerCanvasProps,
   FormInspectorProps,

@@ -8,6 +8,7 @@ import type {
 
 export type FormDesignerViewMode = "form" | "yaml" | "preview";
 export type FormDesignerCanvasEditMode = "instant" | "commit";
+export type FormDesignerSourceUpdateMode = "immediate" | "manual";
 
 export type FormDesignerSelection =
   | { readonly kind: "form" }
@@ -22,6 +23,7 @@ export type FormSourceChangeReason =
   | "canvas-delete"
   | "canvas-reorder"
   | "inspector-edit"
+  | "manual-save"
   | "version-restore";
 
 export type FormSourceChangeEvent = {
@@ -35,6 +37,7 @@ export type FormDesignerOptions = {
   readonly viewModes: readonly FormDesignerViewMode[];
   readonly autoSaveValidVersions: boolean;
   readonly canvasEditMode: FormDesignerCanvasEditMode;
+  readonly sourceUpdateMode: FormDesignerSourceUpdateMode;
 };
 
 export type FormDesignerProps = {

@@ -43,31 +43,13 @@ export function ElementBlock({
   const [draft, setDraft] = useState(() => elementDraft(element));
 
   useEffect(() => {
-    if (!selected) {
-      setDraft(elementDraft(element));
-    }
-  }, [element, selected]);
+    setDraft(elementDraft(element));
+  }, [element.description, element.id, element.title, element.type, selected, element.type === "question" ? element.required : false]);
 
   function updateDraft(patch: Partial<ElementDraft>): void {
     const nextDraft = { ...draft, ...patch };
     setDraft(nextDraft);
-    if (editMode === "instant") {
-      onUpdateElement(pageId, element.id, draftPatch(element, nextDraft));
-    }
-  }
-
-  function saveDraft(): void {
-    onUpdateElement(pageId, element.id, draftPatch(element, draft));
-  }
-
-  function cancelDraft(): void {
-    setDraft(elementDraft(element));
-  }
-
-  function blurBlock(event: React.FocusEvent<HTMLDivElement>): void {
-    if (editMode === "instant" && !event.currentTarget.contains(event.relatedTarget)) {
-      saveDraft();
-    }
+    onUpdateElement(pageId, element.id, draftPatch(element, nextDraft));
   }
 
   return (
@@ -77,7 +59,6 @@ export function ElementBlock({
       className={selected ? "qf-element-block is-selected" : "qf-element-block"}
       data-edit-mode={selected ? editMode : "readonly"}
       onClick={() => onSelectionChange({ kind: "element", pageId, elementId: element.id })}
-      onBlur={blurBlock}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -108,16 +89,6 @@ export function ElementBlock({
               />
               <span>Obligatoire</span>
             </label>
-          ) : null}
-          {editMode === "commit" ? (
-            <div className="qf-element-edit-actions">
-              <button type="button" onClick={saveDraft}>
-                Enregistrer
-              </button>
-              <button type="button" onClick={cancelDraft}>
-                Annuler
-              </button>
-            </div>
           ) : null}
         </div>
       ) : (

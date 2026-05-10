@@ -326,13 +326,19 @@ type FormDesignerOptions = {
   viewModes: readonly ("form" | "yaml" | "preview")[];
   autoSaveValidVersions: boolean;
   canvasEditMode: "instant" | "commit";
+  sourceUpdateMode: "immediate" | "manual";
 };
 ```
 
 `canvasEditMode` controle l'edition inline des blocs question :
 
 - `instant` applique les modifications au fil de l'edition ;
-- `commit` affiche `Enregistrer` / `Annuler` dans le bloc selectionne.
+- `commit` est conserve pour compatibilite et n'ajoute plus d'action locale par question.
+
+`sourceUpdateMode` controle la sortie du designer :
+
+- `immediate` emet `onSourceChange` a chaque modification ;
+- `manual` garde un brouillon interne et affiche `Sauvegarder` / `Annuler` dans la barre haute.
 
 La selection peut etre controlee par l'application :
 
