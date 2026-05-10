@@ -726,6 +726,11 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
+Une version npm deja publiee est immuable. Si le workflow est relance sur une
+version deja presente dans GitHub Packages, l'etape de publication est ignoree.
+Pour publier un nouveau contenu, il faut d'abord incrementer `package.json`, puis
+creer et pousser le tag correspondant.
+
 ## Documentation D'Architecture
 
 Les documents de reference sont dans `documents/` :
