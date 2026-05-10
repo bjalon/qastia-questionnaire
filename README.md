@@ -731,6 +731,21 @@ version deja presente dans GitHub Packages, l'etape de publication est ignoree.
 Pour publier un nouveau contenu, il faut d'abord incrementer `package.json`, puis
 creer et pousser le tag correspondant.
 
+## Publication De L'Exemple
+
+L'application d'exemple integree est publiee sur GitHub Pages par le workflow
+`Deploy Example to GitHub Pages`. Elle est reconstruite a chaque push sur `main`
+et peut aussi etre redeployee manuellement depuis l'onglet Actions.
+
+URL attendue :
+
+```text
+https://bjalon.github.io/qastia-questionnaire/
+```
+
+Dans les settings GitHub du repository, la source Pages doit etre configuree sur
+`GitHub Actions`.
+
 ## Documentation D'Architecture
 
 Les documents de reference sont dans `documents/` :

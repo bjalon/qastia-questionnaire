@@ -1,0 +1,74 @@
+name: Deploy Example to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    name: Deploy integrated example
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout qastia-gitlight dependency
+        uses: actions/checkout@v4
+        with:
+          repository: bjalon/qastia-gitlight
+          path: .ci/qastia-gitlight
+
+      - name: Link local qastia-gitlight dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TARGET="${GITHUB_WORKSPACE}/../qastia-gitlight"
+          if [ -e "${TARGET}" ] && [ ! -L "${TARGET}" ]; then
+            echo "::error::Cannot link qastia-gitlight dependency because ${TARGET} already exists and is not a symlink."
+            exit 1
+          fi
+
+          ln -sfn "${GITHUB_WORKSPACE}/.ci/qastia-gitlight" "${TARGET}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build integrated example
+        run: npm run build:example
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-example
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
