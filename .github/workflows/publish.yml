@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -33,46 +34,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate qastia-gitlight access token
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "${QASTIA_GITLIGHT_TOKEN}" ]; then
-            echo "::error::Missing QASTIA_GITLIGHT_TOKEN repository secret. Create a fine-grained GitHub token with read-only Contents access to bjalon/qastia-gitlight."
-            exit 1
-          fi
-        env:
-          QASTIA_GITLIGHT_TOKEN: ${{ secrets.QASTIA_GITLIGHT_TOKEN }}
-
-      - name: Checkout qastia-gitlight dependency
-        uses: actions/checkout@v4
-        with:
-          repository: bjalon/qastia-gitlight
-          path: .ci/qastia-gitlight
-          token: ${{ secrets.QASTIA_GITLIGHT_TOKEN }}
-
-      - name: Link local qastia-gitlight dependency
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          TARGET="${GITHUB_WORKSPACE}/../qastia-gitlight"
-          if [ -e "${TARGET}" ] && [ ! -L "${TARGET}" ]; then
-            echo "::error::Cannot link qastia-gitlight dependency because ${TARGET} already exists and is not a symlink."
-            exit 1
-          fi
-
-          ln -sfn "${GITHUB_WORKSPACE}/.ci/qastia-gitlight" "${TARGET}"
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: "@bjalon"
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Typecheck
         run: npm run typecheck
@@ -161,44 +134,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Validate qastia-gitlight access token
-        if: steps.published.outputs.exists != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "${QASTIA_GITLIGHT_TOKEN}" ]; then
-            echo "::error::Missing QASTIA_GITLIGHT_TOKEN repository secret. Create a fine-grained GitHub token with read-only Contents access to bjalon/qastia-gitlight."
-            exit 1
-          fi
-        env:
-          QASTIA_GITLIGHT_TOKEN: ${{ secrets.QASTIA_GITLIGHT_TOKEN }}
-
-      - name: Checkout qastia-gitlight dependency
-        if: steps.published.outputs.exists != 'true'
-        uses: actions/checkout@v4
-        with:
-          repository: bjalon/qastia-gitlight
-          path: .ci/qastia-gitlight
-          token: ${{ secrets.QASTIA_GITLIGHT_TOKEN }}
-
-      - name: Link local qastia-gitlight dependency
-        if: steps.published.outputs.exists != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          TARGET="${GITHUB_WORKSPACE}/../qastia-gitlight"
-          if [ -e "${TARGET}" ] && [ ! -L "${TARGET}" ]; then
-            echo "::error::Cannot link qastia-gitlight dependency because ${TARGET} already exists and is not a symlink."
-            exit 1
-          fi
-
-          ln -sfn "${GITHUB_WORKSPACE}/.ci/qastia-gitlight" "${TARGET}"
-
       - name: Install dependencies
         if: steps.published.outputs.exists != 'true'
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build package
         if: steps.published.outputs.exists != 'true'

@@ -746,10 +746,10 @@ https://bjalon.github.io/qastia-questionnaire/
 Dans les settings GitHub du repository, la source Pages doit etre configuree sur
 `GitHub Actions`.
 
-L'exemple depend de `qastia-gitlight` pour montrer le stockage Gitlight. Si ce
-repository est prive, les workflows ont besoin du secret repository
-`QASTIA_GITLIGHT_TOKEN`. Utiliser un token GitHub fine-grained avec acces
-`Contents: read-only` sur `bjalon/qastia-gitlight`.
+L'exemple depend de `@bjalon/object-vcs-core` pour montrer le stockage Gitlight.
+Le package est lu depuis GitHub Packages avec le `GITHUB_TOKEN` du workflow. Dans
+les settings du package, donner l'acces Actions au repository consommateur si
+GitHub Packages le demande.
 
 ## Documentation D'Architecture
 
