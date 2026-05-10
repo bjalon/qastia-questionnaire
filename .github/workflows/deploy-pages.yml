@@ -30,11 +30,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate qastia-gitlight access token
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${QASTIA_GITLIGHT_TOKEN}" ]; then
+            echo "::error::Missing QASTIA_GITLIGHT_TOKEN repository secret. Create a fine-grained GitHub token with read-only Contents access to bjalon/qastia-gitlight."
+            exit 1
+          fi
+        env:
+          QASTIA_GITLIGHT_TOKEN: ${{ secrets.QASTIA_GITLIGHT_TOKEN }}
+
       - name: Checkout qastia-gitlight dependency
         uses: actions/checkout@v4
         with:
           repository: bjalon/qastia-gitlight
           path: .ci/qastia-gitlight
+          token: ${{ secrets.QASTIA_GITLIGHT_TOKEN }}
 
       - name: Link local qastia-gitlight dependency
         shell: bash
