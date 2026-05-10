@@ -19,6 +19,63 @@ textarea {
   padding: 24px;
 }
 
+.example-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1480px;
+  margin: 0 auto 16px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #d4e0e4;
+  border-radius: 8px;
+}
+
+.example-toolbar p,
+.example-toolbar h1 {
+  margin: 0;
+}
+
+.example-toolbar p {
+  color: #5d6b73;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.example-toolbar h1 {
+  margin-top: 2px;
+  color: #172433;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.storage-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #eef3f5;
+  border: 1px solid #d4e0e4;
+  border-radius: 8px;
+}
+
+.storage-switch button {
+  min-height: 36px;
+  padding: 7px 12px;
+  color: #4d5d66;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.storage-switch button[aria-pressed="true"] {
+  color: #172433;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(20 32 43 / 12%);
+}
+
 .panel-header button {
   min-height: 38px;
   padding: 8px 14px;
@@ -182,4 +239,16 @@ textarea {
     padding: 12px;
   }
 
+  .example-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .storage-switch {
+    width: 100%;
+  }
+
+  .storage-switch button {
+    flex: 1;
+  }
 }

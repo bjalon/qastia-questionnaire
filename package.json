@@ -74,6 +74,7 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
+    "@bjalon/object-vcs-core": "file:../qastia-gitlight/packages/core",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.15.3",
