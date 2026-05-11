@@ -26,7 +26,7 @@ Le reste a faire concerne surtout la robustesse, l'ergonomie, la couverture de t
 ```txt
 Lot 0  — Initialisation projet librairie                   FAIT
 Lot 1  — Domaine public et modele YAML V1                  FAIT
-Lot 2  — Compilateur YAML avec diagnostics                 FAIT, durci
+Lot 2  — Compilateur YAML avec diagnostics                 FAIT, durci, preset Qualiopi
 Lot 3  — Runtime registries                                FAIT, documente
 Lot 4  — Types de questions V1                             FAIT, edition enrichie
 Lot 5  — FormRunner participant                            FAIT, UX validation durcie
@@ -79,6 +79,7 @@ Livre :
 
 - `FormSource` ;
 - `RawForm`, `RawFormPage`, `RawFormElement` ;
+- modèle source simplifié `kind: form-preset` pour presets compilables ;
 - `CompiledForm`, `CompiledFormPage`, `CompiledFormElement` ;
 - ids publics ;
 - `FormDiagnostic` ;
@@ -104,6 +105,8 @@ Livre :
 
 - `compileForm()` ;
 - parsing YAML ;
+- expansion des presets supportés avant validation du formulaire standard ;
+- preset `qualiopi.subject-progress.v1` basé sur une liste de sujets ;
 - validation Zod ;
 - diagnostics avec `code`, `severity`, `path`, `range`, `hint`, `pageId`, `elementId` ;
 - `mode: "authoring" | "strict"` ;
@@ -111,10 +114,13 @@ Livre :
 - strict mode bloquant sur champs inconnus, theme inconnu, navigation invalide ;
 - diagnostics de doublons avec `related` vers la premiere occurrence ;
 - messages de validation schema francises ;
+- génération automatique des questionnaires Qualiopi à chaud et à froid ;
 - tests de localisation pour chemins imbriques, collections inline, commentaires, anchors et valeurs multilignes.
+- tests du preset Qualiopi : chaud/froid, sortie froide seule, diagnostics localisés sur sujets invalides.
 
 Reste a faire :
 
+- extraire un registre de presets si plusieurs presets métier apparaissent ;
 - completer la source map YAML seulement si un cas reel apparait en edition : tags custom, merge keys, aliases complexes ;
 - ajouter tests de localisation sur les prochains diagnostics ajoutes ;
 - conserver `sourceHash` en `fnv1a` pour V1 afin de garder un calcul synchrone cote navigateur.

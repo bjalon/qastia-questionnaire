@@ -110,6 +110,8 @@ src/
   compiler/
     compileForm.ts
     parseFormSource.ts
+    presets/
+      qualiopiSubjectProgress.ts
     validateFormSchema.ts
     normalizeForm.ts
     validateFormSemantics.ts
@@ -411,6 +413,70 @@ statement
 ```
 
 `statement` permet d’ajouter un texte explicatif sans réponse attendue.
+
+### 6.5. Preset Qualiopi par sujets
+
+En complément du modèle `kind: form`, le compilateur accepte un modèle source
+simplifié pour les questionnaires Qualiopi basés sur une liste de sujets.
+
+Ce modèle permet à l'application hôte de ne fournir que les sujets travaillés
+pendant une formation. Le compilateur expanse ensuite cette source en formulaire
+V1 standard avant la validation schema, la compilation des pages et le rendu.
+
+```yaml
+version: 1
+kind: form-preset
+preset: qualiopi.subject-progress.v1
+id: management-qualiopi
+metadata:
+  title: "Formation management"
+  locale: "fr-FR"
+qualiopi:
+  training:
+    title: "Manager une equipe"
+  subjects:
+    - id: posture_manageriale
+      label: "Adopter une posture manageriale"
+    - id: entretien_recadrage
+      label: "Mener un entretien de recadrage"
+outputs:
+  - hot
+  - cold
+```
+
+Champs :
+
+- `kind` vaut `form-preset` ;
+- `preset` vaut `qualiopi.subject-progress.v1` ;
+- `metadata` reprend les champs du formulaire standard ;
+- `qualiopi.training.title` documente la prestation ;
+- `qualiopi.subjects` contient les sujets à évaluer ;
+- `outputs` est optionnel et accepte `hot`, `cold`, ou les deux.
+
+Si `outputs` est omis, le preset génère les deux questionnaires :
+
+- `hot` : progression ressentie sur chaque sujet, satisfaction globale,
+  difficulté/réclamation et commentaire libre ;
+- `cold` : utilisation effective de chaque sujet, utilité ressentie, contexte
+  d'usage, freins, besoin complémentaire et commentaire libre.
+
+Les ids de sujets doivent être stables. Ils produisent des ids de questions
+stables :
+
+```txt
+hot_progress_posture_manageriale
+cold_used_posture_manageriale
+cold_usefulness_posture_manageriale
+```
+
+Si un sujet ne définit pas `id`, le compilateur dérive un id depuis `label`.
+Cette dérivation est pratique pour prototyper, mais un id explicite est recommandé
+pour les questionnaires utilisés en production afin de stabiliser les exports de
+réponses.
+
+Le preset ne change pas le runtime : le résultat compilé reste un
+`CompiledForm` standard, rendu par `FormRunner`, `FormPreview` et
+`FormDesigner`.
 
 ---
 
@@ -891,16 +957,17 @@ ids dupliqués
 ```txt
 1. parse YAML
 2. collect syntax errors and warnings
-3. validate raw schema
-4. normalize metadata
-5. validate unique ids
-6. resolve theme
-7. resolve question types
-8. validate each question config
-9. compile pages
-10. compile elements
-11. validate semantic rules
-12. produce CompiledForm or DebugFormViewModel
+3. expand supported presets, if kind: form-preset
+4. validate raw schema
+5. normalize metadata
+6. validate unique ids
+7. resolve theme
+8. resolve question types
+9. validate each question config
+10. compile pages
+11. compile elements
+12. validate semantic rules
+13. produce CompiledForm or DebugFormViewModel
 ```
 
 ---
