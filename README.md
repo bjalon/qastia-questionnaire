@@ -747,9 +747,8 @@ Dans les settings GitHub du repository, la source Pages doit etre configuree sur
 `GitHub Actions`.
 
 L'exemple depend de `@bjalon/object-vcs-core` pour montrer le stockage Gitlight.
-Le package est lu depuis GitHub Packages avec le `GITHUB_TOKEN` du workflow. Dans
-les settings du package, donner l'acces Actions au repository consommateur si
-GitHub Packages le demande.
+Ce package est public sur npmjs, donc le workflow Pages l'installe sans secret
+et sans configuration GitHub Packages.
 
 ## Documentation D'Architecture
 

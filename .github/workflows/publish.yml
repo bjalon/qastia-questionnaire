@@ -20,7 +20,6 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -38,14 +37,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://npm.pkg.github.com
-          scope: "@bjalon"
           cache: npm
 
       - name: Install dependencies
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Typecheck
         run: npm run typecheck
@@ -100,12 +95,10 @@ jobs:
 
           echo "Package scope @${PACKAGE_SCOPE} matches repository owner ${GITHUB_REPOSITORY_OWNER}."
 
-      - name: Setup Node for GitHub Packages
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://npm.pkg.github.com
-          scope: "@bjalon"
           cache: npm
 
       - name: Read package metadata
@@ -137,12 +130,18 @@ jobs:
       - name: Install dependencies
         if: steps.published.outputs.exists != 'true'
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build package
         if: steps.published.outputs.exists != 'true'
         run: npm run build
+
+      - name: Setup Node for GitHub Packages
+        if: steps.published.outputs.exists != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: "@bjalon"
 
       - name: Publish package
         if: steps.published.outputs.exists != 'true'
