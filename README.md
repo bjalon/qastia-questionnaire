@@ -123,6 +123,42 @@ pages:
 - `paged` : navigation page par page ;
 - `single-page` : toutes les pages sont rendues ensemble.
 
+### Preset Qualiopi Par Sujets
+
+Pour les questionnaires Qualiopi simples, il est possible de fournir seulement
+les sujets de formation. Le compilateur expanse alors la source en questionnaire
+standard V1, sans changer le runtime.
+
+```yaml
+version: 1
+kind: form-preset
+preset: qualiopi.subject-progress.v1
+id: management-qualiopi
+metadata:
+  title: "Formation management"
+qualiopi:
+  training:
+    title: "Manager une equipe"
+  subjects:
+    - id: posture_manageriale
+      label: "Adopter une posture manageriale"
+    - id: entretien_recadrage
+      label: "Mener un entretien de recadrage"
+outputs:
+  - hot
+  - cold
+```
+
+`outputs` est optionnel. Par defaut, le preset genere deux pages :
+
+- `hot` : evaluation a chaud de la progression ressentie sur chaque sujet ;
+- `cold` : evaluation a froid de l'utilisation effective de chaque sujet.
+
+Les ids de sujets sont reutilises pour produire des ids de questions stables,
+par exemple `hot_progress_posture_manageriale` et
+`cold_used_posture_manageriale`. Si `id` est omis sur un sujet, il est derive du
+`label`.
+
 ## Types De Questions V1
 
 Le runtime par defaut fournit :

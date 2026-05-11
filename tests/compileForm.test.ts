@@ -108,6 +108,84 @@ describe("compileForm", () => {
     expect(schemaDiagnostic?.message).toContain("valeur attendue");
     expect(schemaDiagnostic?.range?.start.line).toBe(13);
   });
+
+  it("expands a Qualiopi subject progress preset into hot and cold questionnaires", () => {
+    const result = compileForm({
+      content: `version: 1
+kind: form-preset
+preset: qualiopi.subject-progress.v1
+id: management-qualiopi
+metadata:
+  title: "Formation management"
+qualiopi:
+  training:
+    title: "Manager une equipe"
+  subjects:
+    - id: posture_manageriale
+      label: "Adopter une posture manageriale"
+    - id: entretien_recadrage
+      label: "Mener un entretien de recadrage"
+`,
+    });
+
+    expect(result.status).toBe("valid");
+    if (result.status === "invalid") {
+      throw new Error("Expected Qualiopi preset to compile");
+    }
+
+    expect(result.form.id).toBe("management-qualiopi");
+    expect(result.form.metadata.title).toBe("Formation management");
+    expect(result.form.pages.map((page) => page.id)).toEqual(["qualiopi_hot", "qualiopi_cold"]);
+    expect(result.form.pages[0]?.elements.some((element) => element.id === "hot_progress_posture_manageriale")).toBe(true);
+    expect(result.form.pages[1]?.elements.some((element) => element.id === "cold_used_entretien_recadrage")).toBe(true);
+  });
+
+  it("can expand only the cold Qualiopi questionnaire", () => {
+    const result = compileForm({
+      content: `version: 1
+kind: form-preset
+preset: qualiopi.subject-progress.v1
+metadata:
+  title: "Evaluation a froid"
+outputs:
+  - cold
+qualiopi:
+  subjects:
+    - label: "Appliquer la methode"
+`,
+    });
+
+    expect(result.status).toBe("valid");
+    if (result.status === "invalid") {
+      throw new Error("Expected Qualiopi preset to compile");
+    }
+
+    expect(result.form.pages).toHaveLength(1);
+    expect(result.form.pages[0]?.id).toBe("qualiopi_cold");
+    expect(result.form.pages[0]?.elements.some((element) => element.id === "cold_used_appliquer_la_methode")).toBe(true);
+  });
+
+  it("returns localized diagnostics for invalid Qualiopi preset subjects", () => {
+    const result = compileForm(
+      {
+        content: `version: 1
+kind: form-preset
+preset: qualiopi.subject-progress.v1
+qualiopi:
+  subjects:
+    - id: "Sujet invalide"
+      label: "Sujet invalide"
+`,
+      },
+      defaultFormRuntime,
+      { mode: "strict" },
+    );
+
+    expect(result.status).toBe("invalid");
+    const diagnostic = result.diagnostics.find((item) => item.code === "SCHEMA_INVALID_VALUE");
+    expect(diagnostic?.path).toEqual(["qualiopi", "subjects", "0", "id"]);
+    expect(diagnostic?.range?.start.line).toBe(6);
+  });
 });
 
 describe("source map", () => {

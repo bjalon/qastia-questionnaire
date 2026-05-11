@@ -20,6 +20,7 @@ import { diagnostic } from "./diagnostics";
 import { rangeFromOffsets } from "./sourceRanges";
 import { rangeForPath } from "./sourceMap/yamlRanges";
 import { normalizeOptions } from "../questionTypes/defaultQuestionTypes";
+import { expandFormPreset } from "./presets/qualiopiSubjectProgress";
 
 const topLevelFields = new Set(["version", "kind", "id", "metadata", "theme", "navigation", "pages"]);
 const metadataFields = new Set(["title", "description", "locale"]);
@@ -83,7 +84,13 @@ export function compileForm(
     };
   }
 
-  const schemaResult = rawFormSchema.safeParse(parsed);
+  const presetResult = expandFormPreset(parsed, source.content, diagnostics, mode);
+  if (presetResult.blocking) {
+    return { status: "invalid", fallback, diagnostics };
+  }
+  const rawForm = presetResult.expanded;
+
+  const schemaResult = rawFormSchema.safeParse(rawForm);
   if (!schemaResult.success) {
     diagnostics.push(
       ...schemaResult.error.issues.map((issue) =>
@@ -96,24 +103,24 @@ export function compileForm(
     );
   }
 
-  diagnostics.push(...unknownFieldDiagnostics(parsed, topLevelFields, [], source.content, mode));
+  diagnostics.push(...unknownFieldDiagnostics(rawForm, topLevelFields, [], source.content, mode));
 
-  const blocking = validateHeader(parsed, diagnostics, source.content, mode);
+  const blocking = validateHeader(rawForm, diagnostics, source.content, mode);
   if (blocking) {
     return { status: "invalid", fallback, diagnostics };
   }
 
-  const metadata = isRecord(parsed.metadata) ? parsed.metadata : {};
+  const metadata = isRecord(rawForm.metadata) ? rawForm.metadata : {};
   diagnostics.push(...unknownFieldDiagnostics(metadata, metadataFields, ["metadata"], source.content, mode));
 
-  const theme = isRecord(parsed.theme) ? parsed.theme : {};
+  const theme = isRecord(rawForm.theme) ? rawForm.theme : {};
   diagnostics.push(...unknownFieldDiagnostics(theme, themeFields, ["theme"], source.content, mode));
 
-  const navigation = isRecord(parsed.navigation) ? parsed.navigation : {};
+  const navigation = isRecord(rawForm.navigation) ? rawForm.navigation : {};
   diagnostics.push(...unknownFieldDiagnostics(navigation, navigationFields, ["navigation"], source.content, mode));
 
   const form: CompiledForm = {
-    id: stringOr(parsed.id, "form"),
+    id: stringOr(rawForm.id, "form"),
     version: 1,
     kind: "form",
     sourceUri: source.uri,
@@ -127,7 +134,7 @@ export function compileForm(
       id: resolveThemeId(theme.id, runtime, diagnostics, source.content, mode),
     },
     navigation: resolveNavigationMode(navigation.mode, diagnostics, source.content, mode),
-    pages: compilePages(parsed.pages, runtime, diagnostics, source.content, mode),
+    pages: compilePages(rawForm.pages, runtime, diagnostics, source.content, mode),
   };
 
   const errorDiagnostics = diagnostics.filter((item) => item.severity === "error");
